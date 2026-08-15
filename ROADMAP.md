@@ -102,7 +102,7 @@ The initial engine introduces page, layout, widget instance, widget configuratio
 
 ---
 
-# Phase 4 — Widget editing experience
+# Phase 4 — Widget editing experience — Completed
 
 Build an editing experience inspired by **StandBy Mode: Clock & Widget by Zetabit Tecnologia**, while keeping Fold Ambient's implementation and visual assets original.
 
@@ -118,6 +118,8 @@ Target interaction model:
 - changes are persisted.
 
 The initial focus should be the **Duo** layout because it is especially appropriate for the Fold6 cover display in landscape.
+
+The initial editing pass supports long-press entry into edit mode, selectable widget slots, tap-to-open widget picking, live preview entries, replacement, Duo slot swapping, and immediate persistence of page changes.
 
 ---
 
@@ -519,4 +521,4 @@ Current foundation:
 - command-line / VS Code development;
 - successful debug build.
 
-**Current active work:** Phase 4 — Widget editing experience.
+**Current active work:** Phase 5 — Pages and navigation.

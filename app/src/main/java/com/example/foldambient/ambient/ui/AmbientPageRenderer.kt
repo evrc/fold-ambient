@@ -1,6 +1,7 @@
 package com.example.foldambient.ambient.ui
 
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.example.foldambient.ambient.AmbientLayoutKind
 import com.example.foldambient.ambient.AmbientPage
@@ -23,6 +25,10 @@ fun AmbientPageRenderer(
   page: AmbientPage,
   widgetRegistry: AmbientWidgetRegistry,
   preferDuo: Boolean,
+  isEditing: Boolean = false,
+  selectedSlotIndex: Int? = null,
+  onSlotLongPress: (Int) -> Unit = {},
+  onSlotClick: (Int) -> Unit = {},
   modifier: Modifier = Modifier,
 ) {
   val layout = if (preferDuo) page.layout else AmbientLayoutKind.Full
@@ -31,12 +37,21 @@ fun AmbientPageRenderer(
       FullLayout(
         widget = page.widgets.firstOrNull(),
         widgetRegistry = widgetRegistry,
+        isEditing = isEditing,
+        isSelected = selectedSlotIndex == 0,
+        slotIndex = 0,
+        onSlotLongPress = onSlotLongPress,
+        onSlotClick = onSlotClick,
         modifier = modifier,
       )
     AmbientLayoutKind.Duo ->
       DuoLayout(
         widgets = page.widgets.take(AmbientLayoutKind.Duo.slotCount),
         widgetRegistry = widgetRegistry,
+        isEditing = isEditing,
+        selectedSlotIndex = selectedSlotIndex,
+        onSlotLongPress = onSlotLongPress,
+        onSlotClick = onSlotClick,
         modifier = modifier,
       )
   }
@@ -46,11 +61,21 @@ fun AmbientPageRenderer(
 private fun FullLayout(
   widget: WidgetInstance?,
   widgetRegistry: AmbientWidgetRegistry,
+  isEditing: Boolean,
+  isSelected: Boolean,
+  slotIndex: Int,
+  onSlotLongPress: (Int) -> Unit,
+  onSlotClick: (Int) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   WidgetSlot(
     widget = widget,
     widgetRegistry = widgetRegistry,
+    isEditing = isEditing,
+    isSelected = isSelected,
+    slotIndex = slotIndex,
+    onSlotLongPress = onSlotLongPress,
+    onSlotClick = onSlotClick,
     modifier = modifier,
   )
 }
@@ -59,6 +84,10 @@ private fun FullLayout(
 private fun DuoLayout(
   widgets: List<WidgetInstance>,
   widgetRegistry: AmbientWidgetRegistry,
+  isEditing: Boolean,
+  selectedSlotIndex: Int?,
+  onSlotLongPress: (Int) -> Unit,
+  onSlotClick: (Int) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   Row(
@@ -69,6 +98,11 @@ private fun DuoLayout(
       WidgetSlot(
         widget = widgets.getOrNull(index),
         widgetRegistry = widgetRegistry,
+        isEditing = isEditing,
+        isSelected = selectedSlotIndex == index,
+        slotIndex = index,
+        onSlotLongPress = onSlotLongPress,
+        onSlotClick = onSlotClick,
         modifier = Modifier.weight(1f),
       )
     }
@@ -79,13 +113,33 @@ private fun DuoLayout(
 private fun WidgetSlot(
   widget: WidgetInstance?,
   widgetRegistry: AmbientWidgetRegistry,
+  isEditing: Boolean,
+  isSelected: Boolean,
+  slotIndex: Int,
+  onSlotLongPress: (Int) -> Unit,
+  onSlotClick: (Int) -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  val borderColor =
+    when {
+      isSelected -> Color.White
+      isEditing -> Color(0xFF6B7280)
+      else -> Color(0xFF1F2937)
+    }
+
   Column(
     modifier =
       modifier
         .fillMaxSize()
-        .border(1.dp, Color(0xFF1F2937), RoundedCornerShape(8.dp))
+        .pointerInput(isEditing, slotIndex) {
+          detectTapGestures(
+            onLongPress = { onSlotLongPress(slotIndex) },
+            onTap = {
+              if (isEditing) onSlotClick(slotIndex)
+            },
+          )
+        }
+        .border(1.dp, borderColor, RoundedCornerShape(8.dp))
         .padding(28.dp),
   ) {
     val renderer = widget?.let(widgetRegistry::widgetFor)

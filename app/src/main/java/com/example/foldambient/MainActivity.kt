@@ -30,10 +30,11 @@ class MainActivity : ComponentActivity() {
     enableEdgeToEdge()
     setContent {
       var isAmbientActive by rememberSaveable { mutableStateOf(false) }
-      val pageDeck =
+      val pageRepository =
         remember {
-          SharedPreferencesAmbientPageRepository(applicationContext).loadDeck()
+          SharedPreferencesAmbientPageRepository(applicationContext)
         }
+      var pageDeck by remember { mutableStateOf(pageRepository.loadDeck()) }
       val widgetRegistry = remember { defaultAmbientWidgetRegistry() }
 
       LaunchedEffect(isAmbientActive) {
@@ -48,6 +49,10 @@ class MainActivity : ComponentActivity() {
           isAmbientActive = isAmbientActive,
           pageDeck = pageDeck,
           widgetRegistry = widgetRegistry,
+          onPageDeckChange = { updatedDeck ->
+            pageDeck = updatedDeck
+            pageRepository.saveDeck(updatedDeck)
+          },
           onAmbientActiveChange = { isAmbientActive = it },
           modifier = Modifier.fillMaxSize(),
         )
