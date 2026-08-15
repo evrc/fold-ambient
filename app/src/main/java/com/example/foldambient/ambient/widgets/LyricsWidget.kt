@@ -2,12 +2,16 @@ package com.example.foldambient.ambient.widgets
 
 import android.content.Intent
 import android.provider.Settings
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -20,8 +24,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.foldambient.ambient.AmbientWidget
 import com.example.foldambient.ambient.WidgetInstance
@@ -142,23 +149,47 @@ private fun SyncedLyrics(
       val startMillis = line.startMillis
       startMillis != null && positionMillis != null && startMillis <= positionMillis
     }.coerceAtLeast(0)
-  val listState = rememberLazyListState()
+  val animatedIndex by animateFloatAsState(
+    targetValue = activeIndex.toFloat(),
+    animationSpec =
+      tween(
+        durationMillis = 850,
+        easing = FastOutSlowInEasing,
+      ),
+    label = "activeLyricIndex",
+  )
 
-  LaunchedEffect(activeIndex) {
-    listState.animateScrollToItem((activeIndex - 1).coerceAtLeast(0))
-  }
+  BoxWithConstraints(modifier = modifier) {
+    val density = LocalDensity.current
+    val lineStep = lyricLineStep(maxHeight)
+    val lineStepPx = with(density) { lineStep.toPx() }
+    val visibleRange = (activeIndex - VisibleSyncedLyricRadius)..(activeIndex + VisibleSyncedLyricRadius)
 
-  LazyColumn(
-    state = listState,
-    modifier = modifier,
-    verticalArrangement = Arrangement.spacedBy(14.dp),
-    horizontalAlignment = Alignment.CenterHorizontally,
-  ) {
-    itemsIndexed(lines) { index, line ->
-      LyricLine(
-        text = line.text,
-        isActive = index == activeIndex,
-      )
+    Box(
+      modifier = Modifier.fillMaxSize(),
+      contentAlignment = Alignment.Center,
+    ) {
+      visibleRange.forEach { index ->
+        val line = lines.getOrNull(index) ?: return@forEach
+        val distance = index - animatedIndex
+        val absoluteDistance = kotlin.math.abs(distance)
+        val alpha = (1f - absoluteDistance * 0.24f).coerceIn(0f, 1f)
+        val scale = (1f - absoluteDistance * 0.055f).coerceIn(0.88f, 1f)
+
+        LyricLine(
+          text = line.text,
+          isActive = index == activeIndex,
+          modifier =
+            Modifier
+              .align(Alignment.Center)
+              .graphicsLayer {
+                translationY = distance * lineStepPx
+                this.alpha = alpha
+                scaleX = scale
+                scaleY = scale
+              },
+        )
+      }
     }
   }
 }
@@ -186,6 +217,7 @@ private fun PlainLyrics(
 private fun LyricLine(
   text: String,
   isActive: Boolean,
+  modifier: Modifier = Modifier,
 ) {
   Text(
     text = text,
@@ -194,5 +226,15 @@ private fun LyricLine(
     textAlign = TextAlign.Center,
     maxLines = if (isActive) 3 else 2,
     overflow = TextOverflow.Ellipsis,
+    modifier = modifier,
   )
 }
+
+private fun lyricLineStep(maxHeight: Dp): Dp =
+  when {
+    maxHeight < 180.dp -> 40.dp
+    maxHeight < 280.dp -> 52.dp
+    else -> 66.dp
+  }
+
+private const val VisibleSyncedLyricRadius = 3
