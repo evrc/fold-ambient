@@ -57,6 +57,7 @@ fun defaultAmbientWidgetRegistry() =
         DateWidget(),
         BatteryWidget(),
         DummyTextWidget(),
+        EmptyWidget(),
         AndroidAppWidgetWidget(),
         MediaWidget(),
         LyricsWidget(),
@@ -100,6 +101,11 @@ fun defaultAmbientWidgetRegistry() =
               "label" to "Text",
               "value" to "Ready",
             ),
+        ),
+        widgetTemplate(
+          id = "empty",
+          displayName = "Empty",
+          widgetType = "empty",
         ),
         widgetTemplate(
           id = "android.appwidget",
