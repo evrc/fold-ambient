@@ -58,6 +58,7 @@ fun defaultAmbientWidgetRegistry() =
         BatteryWidget(),
         DummyTextWidget(),
         AndroidAppWidgetWidget(),
+        MediaWidget(),
       ),
     templates =
       listOf(
@@ -103,6 +104,11 @@ fun defaultAmbientWidgetRegistry() =
           id = "android.appwidget",
           displayName = "Phone Widget",
           widgetType = "android.appwidget",
+        ),
+        widgetTemplate(
+          id = "media.playback",
+          displayName = "Media",
+          widgetType = "media.playback",
         ),
       ),
   )

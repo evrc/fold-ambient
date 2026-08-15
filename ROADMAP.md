@@ -303,7 +303,7 @@ The initial investigation adds a safe Android AppWidget host foundation: a selec
 
 ---
 
-# Phase 10 — Media widget
+# Phase 10 — Media widget — Completed
 
 Add a generic media widget rather than a YouTube-Music-specific screen.
 
@@ -325,6 +325,8 @@ Capabilities should include:
 YouTube Music is the primary initial target, but the architecture should work with other Android media applications when possible.
 
 Media-session/platform interaction should remain behind a small service/repository abstraction instead of being embedded directly into the widget UI.
+
+The initial media pass adds a generic media widget backed by a small platform repository around Android media-session APIs. It can display active-session metadata, artwork, playback state, position/duration, and basic transport controls when notification-listener access is enabled by the user.
 
 ---
 
@@ -531,4 +533,4 @@ Current foundation:
 - command-line / VS Code development;
 - successful debug build.
 
-**Current active work:** Phase 10 — Media widget.
+**Current active work:** Phase 11 — Lyrics widget.
