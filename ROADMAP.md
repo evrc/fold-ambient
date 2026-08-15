@@ -2,7 +2,7 @@
 
 Fold Ambient is a native Android ambient-dashboard application designed primarily for the **Samsung Galaxy Z Fold6 cover screen**, especially while the device is positioned in **tent or wedge mode**.
 
-The long-term goal is a customizable StandBy-style dashboard built around a reusable widget system. Music playback and synchronized lyrics are planned as widgets rather than as application-specific screens.
+Fold Ambient is now in a v1 stabilization/validation posture: the core customizable dashboard, media, lyrics, weather, automatic Fold6 activation, persistence, OLED behavior, and architecture cleanup work are implemented. The next work should be driven primarily by physical Fold6 use rather than speculative architecture.
 
 ## Guiding principles
 
@@ -198,7 +198,7 @@ Introduces asynchronous/network-backed state.
 
 The goal is not merely to add features. These widgets should validate that widgets with very different state models can all fit the same framework cleanly.
 
-The initial built-in widget pass adds digital clock, analog clock, date, battery, and simple text widgets. Weather remains deferred until networking and provider choices are intentionally introduced.
+The built-in widget set now includes digital clock, analog clock, date, battery, simple text, empty, and weather widgets. Weather uses Open-Meteo for current conditions and city autocomplete, supports manual city selection and optional phone-location configuration, and keeps provider-specific configuration UI inside the weather widget boundary.
 
 ---
 
@@ -266,7 +266,7 @@ The initial layout expansion adds Full, Duo, and Quad as explicit page layouts. 
 
 ---
 
-# Phase 9 — Android third-party widgets — Completed
+# Phase 9 — Android third-party widgets investigation — Completed
 
 Investigate hosting standard Android AppWidgets inside Fold Ambient.
 
@@ -299,7 +299,7 @@ Todoist
 
 This should only be attempted after Fold Ambient's own widget architecture is stable.
 
-The initial investigation adds a safe Android AppWidget host foundation: a selectable placeholder widget type, `AppWidgetHostView` rendering for an already-bound app widget ID, and documentation for the future binding/configuration/cleanup flow. A full phone-widget picker is intentionally deferred.
+The investigation adds a safe Android AppWidget host foundation: placeholder widget type support, `AppWidgetHostView` rendering for an already-bound app widget ID, and documentation for the future binding/configuration/cleanup flow. Full third-party Android AppWidget hosting remains intentionally deferred for v1: the user-facing Phone Widget picker entry is hidden until the complete allocate/bind/configure/delete flow is implemented.
 
 ---
 
@@ -403,7 +403,7 @@ The exact behavior must be based on observed Fold6 behavior rather than guessed 
 
 Users should be able to configure the activation conditions.
 
-The initial automatic activation pass adds an opt-in state machine based on validated Fold6 behavior: cover-like landscape window geometry, raw hinge angle, and optional charging. Hinge thresholds and cover aspect ratio are configurable from the entry screen, automatic sessions exit when conditions no longer match, and manual ambient entry remains independent.
+The automatic activation implementation is based on validated Fold6 behavior: cover-like landscape window geometry, raw hinge angle, and optional charging. Hinge thresholds and cover aspect ratio are configurable from the entry screen. Activation now uses an explicit debounced state machine with entry stabilization, exit hysteresis, and a manual-pause state so manual dismissal does not immediately re-enter while the Fold remains in the same eligible posture.
 
 ---
 
@@ -473,6 +473,42 @@ Use an appropriate lightweight Android persistence solution such as DataStore un
 
 This pass consolidates the remaining display and OLED-protection preferences into persisted settings: keep-screen-on behavior, active and idle brightness, idle dim timing, and pixel-shift behavior. It intentionally continues the existing small SharedPreferences repository pattern already used for page configuration and automatic activation settings, avoiding a storage migration or new persistence dependency until there is a stronger reason.
 
+Page and widget configuration persistence is schema-versioned and tolerant of partial corruption, unknown future values, malformed widgets/pages, and legacy unversioned data. Valid neighboring pages and widgets are preserved where possible instead of resetting the entire dashboard.
+
+---
+
+# v1 architecture stabilization — Completed
+
+The v1 stabilization pass reviewed the implemented roadmap and tightened the architecture without changing the product shape.
+
+Completed stabilization work:
+
+- side-effect-free widget picker previews via explicit widget preview rendering;
+- lifecycle-aware widget work using STARTED-scoped effects for live widget background work;
+- shared callback-driven media state owned at the activity level and consumed by Media and Lyrics widgets;
+- notification-listener component matching for media-session availability;
+- focused JVM test safety net for pure logic and stabilization behavior;
+- schema-versioned tolerant page-deck persistence;
+- debounced automatic activation state machine with exit hysteresis and manual pause;
+- bounded in-memory LRU caches for lyrics and geocoding lookups;
+- phone-location cancellation safety for callback/cancellation races;
+- final cleanup of stale `preferDuo`, weather-specific configuration coupling, and digital-clock fitting recomputation.
+
+Current JVM test count: **87**.
+
+---
+
+# Intentionally deferred work
+
+These areas are intentionally not considered complete for v1:
+
+- full third-party Android AppWidget hosting, including user-facing picker, allocation, binding, provider configuration, and delete/cleanup flow;
+- broader weather-provider architecture beyond the current Open-Meteo-backed weather and geocoding implementation;
+- additional weather policy inputs such as motion/stationary detection;
+- broader device support beyond validation on the physical Galaxy Z Fold6;
+- richer calendar, notification, Home Assistant, media queue, and theme ecosystems;
+- flexible custom widget sizing and drag-and-drop layouts.
+
 ---
 
 # Future possibilities
@@ -530,17 +566,22 @@ Potential extensions after the core application is mature:
 
 # Current status
 
-The initial native Android project has been scaffolded successfully.
+Fold Ambient has completed the planned v1 roadmap and architecture stabilization work. The current application foundation includes:
 
-Phase 1 Fold6 device diagnostics are complete. Validated physical-device findings are recorded in `docs/fold6-device-findings.md`.
-
-Current foundation:
-
-- Kotlin;
-- Jetpack Compose;
-- single `:app` module;
+- Kotlin and Jetpack Compose;
+- a single `:app` module;
 - Android Gradle Plugin 9;
 - command-line / VS Code development;
-- successful debug build.
+- a page/layout/widget dashboard engine;
+- edit mode with widget picking, page management, layout switching, widget configuration, and persistence;
+- built-in digital clock, analog clock, date, battery, simple text, empty, weather, media, and lyrics widgets;
+- Android media-session integration through a shared platform repository;
+- synchronized/plain lyrics lookup and display;
+- automatic Fold6 ambient activation based on validated physical-device behavior;
+- OLED/desk-display behavior including brightness, keep-screen-on, idle dimming, and pixel shifting;
+- schema-versioned tolerant page-deck persistence;
+- v1 architecture stabilization with an 87-test JVM safety net.
 
-**Current active work:** Future possibilities / next milestone selection.
+**Current active work:** Product / UX validation and polish.
+
+Near-term work should be driven by real physical Fold6 use: desk placement, hinge behavior, readability, night comfort, accidental activation/deactivation, music/lyrics reliability, and everyday editing ergonomics. Avoid speculative architecture work unless physical-device usage reveals a concrete problem.
