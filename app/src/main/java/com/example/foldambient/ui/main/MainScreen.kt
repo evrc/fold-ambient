@@ -694,6 +694,12 @@ private fun WidgetConfigurationPanel(
             singleLine = true,
             label = { Text(field.label) },
           )
+        WidgetConfigurationFieldType.Option ->
+          OptionField(
+            field = field,
+            selectedValue = widget.configuration.text(field.key, field.defaultValue),
+            onFieldChange = onFieldChange,
+          )
         WidgetConfigurationFieldType.Boolean ->
           Row(
             modifier = Modifier.fillMaxWidth(),
@@ -710,6 +716,37 @@ private fun WidgetConfigurationPanel(
               onCheckedChange = { checked -> onFieldChange(field, checked.toString()) },
             )
           }
+      }
+    }
+  }
+}
+
+@Composable
+private fun OptionField(
+  field: WidgetConfigurationField,
+  selectedValue: String,
+  onFieldChange: (WidgetConfigurationField, String) -> Unit,
+) {
+  Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Text(
+      text = field.label,
+      color = Color.White,
+      style = MaterialTheme.typography.bodyLarge,
+    )
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .horizontalScroll(rememberScrollState()),
+      horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+      field.options.forEach { option ->
+        val isSelected = option.value == selectedValue
+        TextButton(onClick = { onFieldChange(field, option.value) }) {
+          Text(
+            text = option.label,
+            color = if (isSelected) Color.White else Muted,
+          )
+        }
       }
     }
   }

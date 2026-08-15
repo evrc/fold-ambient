@@ -16,6 +16,8 @@ object DefaultAmbientPages {
                 values =
                   mapOf(
                     "label" to "Clock",
+                    "style" to "classic",
+                    "fillSpace" to "false",
                     "use24Hour" to "true",
                   ),
               ),

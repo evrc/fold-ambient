@@ -45,10 +45,17 @@ data class WidgetConfigurationField(
   val label: String,
   val type: WidgetConfigurationFieldType,
   val defaultValue: String,
+  val options: List<WidgetConfigurationOption> = emptyList(),
+)
+
+data class WidgetConfigurationOption(
+  val value: String,
+  val label: String,
 )
 
 enum class WidgetConfigurationFieldType {
   Boolean,
+  Option,
   Text,
 }
 
