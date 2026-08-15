@@ -372,7 +372,7 @@ The initial lyrics pass adds an independent lyrics widget backed by current medi
 
 ---
 
-# Phase 12 — Automatic ambient activation
+# Phase 12 — Automatic ambient activation — Completed
 
 Return to the Fold6 diagnostics collected in Phase 1, especially `docs/fold6-device-findings.md`, and design a reliable activation state machine.
 
@@ -402,6 +402,8 @@ Normal phone use
 The exact behavior must be based on observed Fold6 behavior rather than guessed fold-state semantics.
 
 Users should be able to configure the activation conditions.
+
+The initial automatic activation pass adds an opt-in state machine based on validated Fold6 behavior: cover-like landscape window geometry, raw hinge angle, and optional charging. Hinge thresholds and cover aspect ratio are configurable from the entry screen, automatic sessions exit when conditions no longer match, and manual ambient entry remains independent.
 
 ---
 
@@ -535,4 +537,4 @@ Current foundation:
 - command-line / VS Code development;
 - successful debug build.
 
-**Current active work:** Phase 12 — Automatic ambient activation.
+**Current active work:** Phase 13 — OLED and desk-display behavior.

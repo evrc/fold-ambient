@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -41,6 +42,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.example.foldambient.activation.AmbientActivationEvaluation
+import com.example.foldambient.activation.AmbientActivationSettings
+import com.example.foldambient.activation.AmbientActivationSignals
+import com.example.foldambient.activation.normalized
 import com.example.foldambient.ambient.AmbientLayoutKind
 import com.example.foldambient.ambient.AmbientPage
 import com.example.foldambient.ambient.AmbientPageDeck
@@ -57,6 +62,7 @@ import com.example.foldambient.theme.FoldAmbientTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlin.math.abs
+import kotlin.math.roundToInt
 import java.util.UUID
 
 @Composable
@@ -64,7 +70,17 @@ fun MainScreen(
   isAmbientActive: Boolean,
   pageDeck: AmbientPageDeck,
   widgetRegistry: AmbientWidgetRegistry,
+  activationSettings: AmbientActivationSettings = AmbientActivationSettings(),
+  activationSignals: AmbientActivationSignals = AmbientActivationSignals(),
+  activationEvaluation: AmbientActivationEvaluation =
+    AmbientActivationEvaluation(
+      shouldActivate = false,
+      isCoverLikeLandscape = false,
+      isHingeInRange = false,
+      isChargingSatisfied = true,
+    ),
   onPageDeckChange: (AmbientPageDeck) -> Unit,
+  onActivationSettingsChange: (AmbientActivationSettings) -> Unit = {},
   onAmbientActiveChange: (Boolean) -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -78,6 +94,10 @@ fun MainScreen(
     )
   } else {
     EntryShell(
+      activationSettings = activationSettings,
+      activationSignals = activationSignals,
+      activationEvaluation = activationEvaluation,
+      onActivationSettingsChange = onActivationSettingsChange,
       onEnter = { onAmbientActiveChange(true) },
       modifier = modifier,
     )
@@ -86,6 +106,10 @@ fun MainScreen(
 
 @Composable
 private fun EntryShell(
+  activationSettings: AmbientActivationSettings,
+  activationSignals: AmbientActivationSignals,
+  activationEvaluation: AmbientActivationEvaluation,
+  onActivationSettingsChange: (AmbientActivationSettings) -> Unit,
   onEnter: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -112,6 +136,106 @@ private fun EntryShell(
       colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Night),
     ) {
       Text("Enter ambient")
+    }
+    SectionSpacer()
+    AutoActivationPanel(
+      settings = activationSettings,
+      signals = activationSignals,
+      evaluation = activationEvaluation,
+      onSettingsChange = onActivationSettingsChange,
+    )
+  }
+}
+
+@Composable
+private fun AutoActivationPanel(
+  settings: AmbientActivationSettings,
+  signals: AmbientActivationSignals,
+  evaluation: AmbientActivationEvaluation,
+  onSettingsChange: (AmbientActivationSettings) -> Unit,
+) {
+  Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Text(
+        text = "Auto ambient",
+        color = Color.White,
+        style = MaterialTheme.typography.titleSmall,
+      )
+      Switch(
+        checked = settings.isEnabled,
+        onCheckedChange = { enabled ->
+          onSettingsChange(settings.copy(isEnabled = enabled).normalized())
+        },
+      )
+    }
+
+    Text(
+      text = activationStatusText(signals, evaluation),
+      color = Muted,
+      style = MaterialTheme.typography.bodyMedium,
+    )
+
+    if (settings.isEnabled) {
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        Text(
+          text = "Require charging",
+          color = Color.White,
+          style = MaterialTheme.typography.bodyLarge,
+        )
+        Switch(
+          checked = settings.requireCharging,
+          onCheckedChange = { requireCharging ->
+            onSettingsChange(settings.copy(requireCharging = requireCharging).normalized())
+          },
+        )
+      }
+
+      Text(
+        text = "Hinge ${settings.minHingeAngle.roundToInt()}-${settings.maxHingeAngle.roundToInt()} deg",
+        color = Muted,
+        style = MaterialTheme.typography.labelLarge,
+      )
+      Slider(
+        value = settings.minHingeAngle,
+        onValueChange = { value ->
+          onSettingsChange(
+            settings.copy(minHingeAngle = value.coerceAtMost(settings.maxHingeAngle - 5f))
+              .normalized(),
+          )
+        },
+        valueRange = 0f..175f,
+      )
+      Slider(
+        value = settings.maxHingeAngle,
+        onValueChange = { value ->
+          onSettingsChange(
+            settings.copy(maxHingeAngle = value.coerceAtLeast(settings.minHingeAngle + 5f))
+              .normalized(),
+          )
+        },
+        valueRange = 5f..180f,
+      )
+
+      Text(
+        text = "Cover shape ${settings.minCoverLandscapeAspectRatio.roundToTenth()}",
+        color = Muted,
+        style = MaterialTheme.typography.labelLarge,
+      )
+      Slider(
+        value = settings.minCoverLandscapeAspectRatio,
+        onValueChange = { value ->
+          onSettingsChange(settings.copy(minCoverLandscapeAspectRatio = value).normalized())
+        },
+        valueRange = 1.5f..2.5f,
+      )
     }
   }
 }
@@ -718,6 +842,23 @@ private fun createEmptyWidget(
 
 private fun ambientWindowClass(width: Dp, height: Dp): AmbientWindowClass =
   if (width > height * 1.8f) AmbientWindowClass.WideCoverLandscape else AmbientWindowClass.Standard
+
+private fun activationStatusText(
+  signals: AmbientActivationSignals,
+  evaluation: AmbientActivationEvaluation,
+): String =
+  when {
+    evaluation.shouldActivate -> "Auto ready"
+    !signals.hingeSensorAvailable -> "Hinge sensor unavailable"
+    !evaluation.isCoverLikeLandscape -> "Waiting for cover landscape"
+    !evaluation.isHingeInRange ->
+      "Hinge ${signals.hingeAngleDegrees?.roundToInt()?.toString() ?: "--"} deg"
+    !evaluation.isChargingSatisfied -> "Waiting for charging"
+    else -> "Waiting"
+  }
+
+private fun Float.roundToTenth(): String =
+  ((this * 10f).roundToInt() / 10f).toString()
 
 private enum class AmbientWindowClass {
   Standard,
