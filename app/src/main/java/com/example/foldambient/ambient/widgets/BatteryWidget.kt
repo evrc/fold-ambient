@@ -16,12 +16,27 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.example.foldambient.ambient.AmbientWidget
+import com.example.foldambient.ambient.WidgetConfigurationField
+import com.example.foldambient.ambient.WidgetConfigurationFieldType
+import com.example.foldambient.ambient.WidgetConfigurationSpec
 import com.example.foldambient.ambient.WidgetInstance
 import kotlinx.coroutines.delay
 
 class BatteryWidget : AmbientWidget {
   override val type = "battery.status"
   override val displayName = "Battery"
+  override val configurationSpec =
+    WidgetConfigurationSpec(
+      fields =
+        listOf(
+          WidgetConfigurationField(
+            key = "label",
+            label = "Label",
+            type = WidgetConfigurationFieldType.Text,
+            defaultValue = "Battery",
+          ),
+        ),
+    )
 
   @Composable
   override fun Content(instance: WidgetInstance, modifier: Modifier) {

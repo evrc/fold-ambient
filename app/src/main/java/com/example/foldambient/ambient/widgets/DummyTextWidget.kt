@@ -9,11 +9,32 @@ import com.example.foldambient.ambient.AmbientWidget
 import com.example.foldambient.ambient.AmbientWidgetRegistry
 import com.example.foldambient.ambient.AmbientWidgetTemplate
 import com.example.foldambient.ambient.WidgetConfiguration
+import com.example.foldambient.ambient.WidgetConfigurationField
+import com.example.foldambient.ambient.WidgetConfigurationFieldType
+import com.example.foldambient.ambient.WidgetConfigurationSpec
 import com.example.foldambient.ambient.WidgetInstance
 
 class DummyTextWidget : AmbientWidget {
   override val type = "dummy.text"
   override val displayName = "Dummy Text"
+  override val configurationSpec =
+    WidgetConfigurationSpec(
+      fields =
+        listOf(
+          WidgetConfigurationField(
+            key = "label",
+            label = "Label",
+            type = WidgetConfigurationFieldType.Text,
+            defaultValue = "Text",
+          ),
+          WidgetConfigurationField(
+            key = "value",
+            label = "Value",
+            type = WidgetConfigurationFieldType.Text,
+            defaultValue = "Ready",
+          ),
+        ),
+    )
 
   @Composable
   override fun Content(instance: WidgetInstance, modifier: Modifier) {

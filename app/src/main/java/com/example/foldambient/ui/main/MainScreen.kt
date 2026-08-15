@@ -23,8 +23,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -45,6 +47,8 @@ import com.example.foldambient.ambient.AmbientPageDeck
 import com.example.foldambient.ambient.AmbientWidgetRegistry
 import com.example.foldambient.ambient.AmbientWidgetTemplate
 import com.example.foldambient.ambient.DefaultAmbientPages
+import com.example.foldambient.ambient.WidgetConfigurationField
+import com.example.foldambient.ambient.WidgetConfigurationFieldType
 import com.example.foldambient.ambient.WidgetConfiguration
 import com.example.foldambient.ambient.WidgetInstance
 import com.example.foldambient.ambient.ui.AmbientPageRenderer
@@ -123,6 +127,7 @@ private fun AmbientDashboard(
   var isEditing by remember { mutableStateOf(false) }
   var selectedSlotIndex by remember { mutableIntStateOf(0) }
   var isPickerOpen by remember { mutableStateOf(false) }
+  var isConfigurationOpen by remember { mutableStateOf(false) }
   var isPageIndicatorVisible by remember { mutableStateOf(false) }
   val selectedPageIndex = pageDeck.selectedPageIndex()
   val realPageCount = pageDeck.pages.size
@@ -153,6 +158,7 @@ private fun AmbientDashboard(
         if (pageId != null && pageId != pageDeck.selectedPageId) {
           onPageDeckChange(pageDeck.copy(selectedPageId = pageId))
           isPickerOpen = false
+          isConfigurationOpen = false
           selectedSlotIndex = 0
         }
       }
@@ -179,6 +185,10 @@ private fun AmbientDashboard(
     val windowClass = ambientWindowClass(maxWidth, maxHeight)
     val preferDuo = windowClass == AmbientWindowClass.WideCoverLandscape
     val selectedPage = pageDeck.selectedPage
+    val selectedWidget = selectedPage?.slotWidgets()?.getOrNull(selectedSlotIndex)
+    val selectedWidgetRenderer = selectedWidget?.let(widgetRegistry::widgetFor)
+    val canConfigureSelectedWidget =
+      selectedWidgetRenderer?.configurationSpec?.isEmpty == false
 
     Column(
       modifier = Modifier.fillMaxSize(),
@@ -204,6 +214,7 @@ private fun AmbientDashboard(
               selectedSlotIndex = slotIndex
               isEditing = true
               isPickerOpen = false
+              isConfigurationOpen = false
               if (page.id != pageDeck.selectedPageId) {
                 onPageDeckChange(pageDeck.copy(selectedPageId = page.id))
               }
@@ -211,6 +222,7 @@ private fun AmbientDashboard(
             onSlotClick = { slotIndex ->
               selectedSlotIndex = slotIndex
               isPickerOpen = true
+              isConfigurationOpen = false
               if (page.id != pageDeck.selectedPageId) {
                 onPageDeckChange(pageDeck.copy(selectedPageId = page.id))
               }
@@ -235,6 +247,7 @@ private fun AmbientDashboard(
           pageTitle = selectedPage.title,
           pageCount = pageDeck.pages.size,
           canSwapWidgets = preferDuo && selectedPage.layout == AmbientLayoutKind.Duo,
+          canConfigureWidget = canConfigureSelectedWidget,
           canMovePageLeft = selectedPageIndex > 0,
           canMovePageRight = selectedPageIndex < pageDeck.pages.lastIndex,
           canDeletePage = pageDeck.pages.size > 1,
@@ -245,6 +258,11 @@ private fun AmbientDashboard(
             onPageDeckChange(pageDeck.addPageAfterSelected())
             selectedSlotIndex = 0
             isPickerOpen = false
+            isConfigurationOpen = false
+          },
+          onConfigureWidget = {
+            isPickerOpen = false
+            isConfigurationOpen = !isConfigurationOpen
           },
           onMovePageLeft = {
             onPageDeckChange(pageDeck.moveSelectedPageBy(-1))
@@ -256,10 +274,12 @@ private fun AmbientDashboard(
             onPageDeckChange(pageDeck.deleteSelectedPage())
             selectedSlotIndex = 0
             isPickerOpen = false
+            isConfigurationOpen = false
           },
           onDone = {
             isEditing = false
             isPickerOpen = false
+            isConfigurationOpen = false
           },
           onExit = onExit,
         )
@@ -271,6 +291,29 @@ private fun AmbientDashboard(
           onTemplateSelected = { template ->
             onPageDeckChange(pageDeck.replaceSelectedPageWidget(selectedSlotIndex, template))
             isPickerOpen = false
+            isConfigurationOpen = false
+          },
+        )
+      }
+
+      if (
+        isEditing &&
+        isConfigurationOpen &&
+        selectedWidget != null &&
+        selectedWidgetRenderer != null
+      ) {
+        WidgetConfigurationPanel(
+          widget = selectedWidget,
+          widgetName = selectedWidgetRenderer.displayName,
+          fields = selectedWidgetRenderer.configurationSpec.fields,
+          onFieldChange = { field, value ->
+            onPageDeckChange(
+              pageDeck.updateSelectedWidgetConfiguration(
+                slotIndex = selectedSlotIndex,
+                field = field,
+                value = value,
+              ),
+            )
           },
         )
       }
@@ -302,11 +345,13 @@ private fun PageEditorBar(
   pageTitle: String,
   pageCount: Int,
   canSwapWidgets: Boolean,
+  canConfigureWidget: Boolean,
   canMovePageLeft: Boolean,
   canMovePageRight: Boolean,
   canDeletePage: Boolean,
   onSwapWidgets: () -> Unit,
   onAddPage: () -> Unit,
+  onConfigureWidget: () -> Unit,
   onMovePageLeft: () -> Unit,
   onMovePageRight: () -> Unit,
   onDeletePage: () -> Unit,
@@ -336,6 +381,12 @@ private fun PageEditorBar(
       }
       TextButton(onClick = onAddPage) {
         Text("Add", color = Color.White)
+      }
+      TextButton(
+        onClick = onConfigureWidget,
+        enabled = canConfigureWidget,
+      ) {
+        Text("Configure", color = if (canConfigureWidget) Color.White else Muted)
       }
       TextButton(
         onClick = onMovePageLeft,
@@ -412,6 +463,56 @@ private fun WidgetTemplatePreview(
   }
 }
 
+@Composable
+private fun WidgetConfigurationPanel(
+  widget: WidgetInstance,
+  widgetName: String,
+  fields: List<WidgetConfigurationField>,
+  onFieldChange: (WidgetConfigurationField, String) -> Unit,
+) {
+  Column(
+    modifier = Modifier
+      .fillMaxWidth()
+      .border(1.dp, Color(0xFF374151), RoundedCornerShape(8.dp))
+      .padding(14.dp),
+    verticalArrangement = Arrangement.spacedBy(12.dp),
+  ) {
+    Text(
+      text = widgetName,
+      color = Color.White,
+      style = MaterialTheme.typography.titleSmall,
+    )
+    fields.forEach { field ->
+      when (field.type) {
+        WidgetConfigurationFieldType.Text ->
+          TextField(
+            value = widget.configuration.text(field.key, field.defaultValue),
+            onValueChange = { value -> onFieldChange(field, value) },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            label = { Text(field.label) },
+          )
+        WidgetConfigurationFieldType.Boolean ->
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            Text(
+              text = field.label,
+              color = Color.White,
+              style = MaterialTheme.typography.bodyLarge,
+            )
+            Switch(
+              checked = widget.configuration.text(field.key, field.defaultValue).toBoolean(),
+              onCheckedChange = { checked -> onFieldChange(field, checked.toString()) },
+            )
+          }
+      }
+    }
+  }
+}
+
 private fun AmbientPageDeck.replaceSelectedPageWidget(
   slotIndex: Int,
   template: AmbientWidgetTemplate,
@@ -420,7 +521,34 @@ private fun AmbientPageDeck.replaceSelectedPageWidget(
     page.copy(
       widgets =
         page.slotWidgets().apply {
-          set(slotIndex, template.toWidgetInstance())
+          if (slotIndex in indices) {
+            set(slotIndex, template.toWidgetInstance())
+          }
+        }.filterNotNull(),
+    )
+  }
+
+private fun AmbientPageDeck.updateSelectedWidgetConfiguration(
+  slotIndex: Int,
+  field: WidgetConfigurationField,
+  value: String,
+): AmbientPageDeck =
+  updateSelectedPage { page ->
+    page.copy(
+      widgets =
+        page.slotWidgets().apply {
+          val widget = getOrNull(slotIndex)
+          if (widget != null && slotIndex in indices) {
+            set(
+              slotIndex,
+              widget.copy(
+                configuration =
+                  WidgetConfiguration(
+                    values = widget.configuration.values + (field.key to value),
+                  ),
+              ),
+            )
+          }
         }.filterNotNull(),
     )
   }

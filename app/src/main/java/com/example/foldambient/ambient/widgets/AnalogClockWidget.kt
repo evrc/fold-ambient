@@ -19,6 +19,9 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import com.example.foldambient.ambient.AmbientWidget
+import com.example.foldambient.ambient.WidgetConfigurationField
+import com.example.foldambient.ambient.WidgetConfigurationFieldType
+import com.example.foldambient.ambient.WidgetConfigurationSpec
 import com.example.foldambient.ambient.WidgetInstance
 import kotlinx.coroutines.delay
 import java.time.LocalTime
@@ -30,6 +33,18 @@ import kotlin.math.sin
 class AnalogClockWidget : AmbientWidget {
   override val type = "clock.analog"
   override val displayName = "Analog Clock"
+  override val configurationSpec =
+    WidgetConfigurationSpec(
+      fields =
+        listOf(
+          WidgetConfigurationField(
+            key = "label",
+            label = "Label",
+            type = WidgetConfigurationFieldType.Text,
+            defaultValue = "Clock",
+          ),
+        ),
+    )
 
   @Composable
   override fun Content(instance: WidgetInstance, modifier: Modifier) {

@@ -202,7 +202,7 @@ The initial built-in widget pass adds digital clock, analog clock, date, battery
 
 ---
 
-# Phase 7 — Widget customization
+# Phase 7 — Widget customization — Completed
 
 Allow individual widget types to expose their own configuration.
 
@@ -222,6 +222,8 @@ Clock settings
 while another widget may expose completely different settings.
 
 Configuration should be persisted independently for each `WidgetInstance`.
+
+The initial customization pass lets widgets expose compact text and boolean configuration fields. The edit experience renders those fields for the selected widget instance, and changes are persisted through the existing page deck storage.
 
 ---
 
@@ -525,4 +527,4 @@ Current foundation:
 - command-line / VS Code development;
 - successful debug build.
 
-**Current active work:** Phase 7 — Widget customization.
+**Current active work:** Phase 8 — Layout expansion.

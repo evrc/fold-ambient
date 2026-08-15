@@ -11,6 +11,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.example.foldambient.ambient.AmbientWidget
+import com.example.foldambient.ambient.WidgetConfigurationField
+import com.example.foldambient.ambient.WidgetConfigurationFieldType
+import com.example.foldambient.ambient.WidgetConfigurationSpec
 import com.example.foldambient.ambient.WidgetInstance
 import kotlinx.coroutines.delay
 import java.time.LocalTime
@@ -19,6 +22,30 @@ import java.time.format.DateTimeFormatter
 class DigitalClockWidget : AmbientWidget {
   override val type = "clock.digital"
   override val displayName = "Digital Clock"
+  override val configurationSpec =
+    WidgetConfigurationSpec(
+      fields =
+        listOf(
+          WidgetConfigurationField(
+            key = "label",
+            label = "Label",
+            type = WidgetConfigurationFieldType.Text,
+            defaultValue = "Clock",
+          ),
+          WidgetConfigurationField(
+            key = "use24Hour",
+            label = "24-hour mode",
+            type = WidgetConfigurationFieldType.Boolean,
+            defaultValue = "true",
+          ),
+          WidgetConfigurationField(
+            key = "showSeconds",
+            label = "Seconds",
+            type = WidgetConfigurationFieldType.Boolean,
+            defaultValue = "false",
+          ),
+        ),
+    )
 
   @Composable
   override fun Content(instance: WidgetInstance, modifier: Modifier) {

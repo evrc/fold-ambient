@@ -22,9 +22,34 @@ data class AmbientWidgetTemplate(
 interface AmbientWidget {
   val type: String
   val displayName: String
+  val configurationSpec: WidgetConfigurationSpec
+    get() = WidgetConfigurationSpec.Empty
 
   @Composable
   fun Content(instance: WidgetInstance, modifier: Modifier)
+}
+
+data class WidgetConfigurationSpec(
+  val fields: List<WidgetConfigurationField>,
+) {
+  val isEmpty: Boolean
+    get() = fields.isEmpty()
+
+  companion object {
+    val Empty = WidgetConfigurationSpec(emptyList())
+  }
+}
+
+data class WidgetConfigurationField(
+  val key: String,
+  val label: String,
+  val type: WidgetConfigurationFieldType,
+  val defaultValue: String,
+)
+
+enum class WidgetConfigurationFieldType {
+  Boolean,
+  Text,
 }
 
 class AmbientWidgetRegistry(
