@@ -330,7 +330,7 @@ The initial media pass adds a generic media widget backed by a small platform re
 
 ---
 
-# Phase 11 — Lyrics widget
+# Phase 11 — Lyrics widget — Completed
 
 Implement lyrics as an independent widget that can cooperate with the media widget without depending on its UI.
 
@@ -367,6 +367,8 @@ The intended flagship layout is:
 │      ━━━●━━━━        │                         │
 └──────────────────────┴─────────────────────────┘
 ```
+
+The initial lyrics pass adds an independent lyrics widget backed by current media-session metadata and LRCLIB lookups. It normalizes noisy track metadata, matches by metadata and duration where available, caches successful matches in memory, displays synchronized lyrics with active-line scrolling, and falls back to plain lyrics or graceful unavailable states.
 
 ---
 
@@ -533,4 +535,4 @@ Current foundation:
 - command-line / VS Code development;
 - successful debug build.
 
-**Current active work:** Phase 11 — Lyrics widget.
+**Current active work:** Phase 12 — Automatic ambient activation.

@@ -59,6 +59,7 @@ fun defaultAmbientWidgetRegistry() =
         DummyTextWidget(),
         AndroidAppWidgetWidget(),
         MediaWidget(),
+        LyricsWidget(),
       ),
     templates =
       listOf(
@@ -109,6 +110,11 @@ fun defaultAmbientWidgetRegistry() =
           id = "media.playback",
           displayName = "Media",
           widgetType = "media.playback",
+        ),
+        widgetTemplate(
+          id = "lyrics.current",
+          displayName = "Lyrics",
+          widgetType = "lyrics.current",
         ),
       ),
   )
