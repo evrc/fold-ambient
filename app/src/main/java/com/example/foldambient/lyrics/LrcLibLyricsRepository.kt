@@ -112,10 +112,10 @@ class LrcLibLyricsRepository : AmbientLyricsRepository {
 private fun JSONObject.toLyricsResult(): AmbientLyricsLookupResult.Found? {
   val syncedLyrics = optStringOrNull("syncedLyrics")
   val plainLyrics = optStringOrNull("plainLyrics")
-  val lines =
-    when {
-      !syncedLyrics.isNullOrBlank() -> syncedLyrics.toSyncedLyricLines()
-      !plainLyrics.isNullOrBlank() -> plainLyrics.toPlainLyricLines()
+    val lines =
+      when {
+      !syncedLyrics.isNullOrBlank() -> parseSyncedLyricLines(syncedLyrics)
+      !plainLyrics.isNullOrBlank() -> parsePlainLyricLines(plainLyrics)
       optBoolean("instrumental", false) ->
         listOf(AmbientLyricLine(startMillis = null, text = "Instrumental"))
       else -> emptyList()
@@ -132,44 +132,6 @@ private fun JSONObject.toLyricsResult(): AmbientLyricsLookupResult.Found? {
       source = if (!syncedLyrics.isNullOrBlank()) AmbientLyricsSource.Synced else AmbientLyricsSource.Plain,
     ),
   )
-}
-
-private fun String.toSyncedLyricLines(): List<AmbientLyricLine> =
-  lineSequence()
-    .flatMap { line ->
-      val timestamps = LrcTimestamp.findAll(line).toList()
-      val text =
-        timestamps.lastOrNull()
-          ?.let { match -> line.substring(match.range.last + 1).trim() }
-          .orEmpty()
-      timestamps.mapNotNull { timestamp ->
-        timestamp.toMillis()?.let { millis ->
-          AmbientLyricLine(startMillis = millis, text = text)
-        }
-      }
-    }
-    .filter { it.text.isNotBlank() }
-    .sortedBy { it.startMillis }
-    .toList()
-
-private fun String.toPlainLyricLines(): List<AmbientLyricLine> =
-  lineSequence()
-    .map { it.trim() }
-    .filter { it.isNotBlank() }
-    .map { AmbientLyricLine(startMillis = null, text = it) }
-    .toList()
-
-private fun MatchResult.toMillis(): Long? {
-  val minutes = groupValues.getOrNull(1)?.toLongOrNull() ?: return null
-  val seconds = groupValues.getOrNull(2)?.toLongOrNull() ?: return null
-  val fraction =
-    groupValues.getOrNull(3)
-      ?.takeIf { it.isNotBlank() }
-      ?.padEnd(3, '0')
-      ?.take(3)
-      ?.toLongOrNull()
-      ?: 0L
-  return minutes * 60_000L + seconds * 1_000L + fraction
 }
 
 private fun JSONObject.matchScore(query: LyricsTrackQuery): Int {
@@ -224,7 +186,6 @@ private fun String.urlEncode(): String = URLEncoder.encode(this, Charsets.UTF_8.
 
 private class TrackNotFoundException : IOException("Track not found")
 
-private val LrcTimestamp = Regex("""\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?]""")
 private const val BaseUrl = "https://lrclib.net"
 private const val LrcLibUserAgent = "FoldAmbient/1.0 (https://example.com/foldambient)"
 private const val HttpTooManyRequests = 429

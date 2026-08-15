@@ -22,6 +22,22 @@ class AmbientMediaSnapshotTest {
   }
 
   @Test
+  fun playingPositionUsesPlaybackSpeed() {
+    val snapshot =
+      AmbientMediaSnapshot(
+        isNotificationListenerEnabled = true,
+        packageName = "music.app",
+        playbackStatus = AmbientPlaybackStatus.Playing,
+        positionMillis = 10_000L,
+        positionUpdateRealtimeMillis = 100_000L,
+        playbackSpeed = 2f,
+        durationMillis = 60_000L,
+      )
+
+    assertEquals(20_000L, snapshot.estimatedPositionMillisAt(105_000L))
+  }
+
+  @Test
   fun interpolatedPositionIsClampedToDuration() {
     val snapshot =
       AmbientMediaSnapshot(
@@ -80,5 +96,36 @@ class AmbientMediaSnapshotTest {
       )
 
     assertNotEquals(base.trackKey, base.copy(title = "Morning Drive").trackKey)
+  }
+
+  @Test
+  fun trackKeyChangesWhenMeaningfulMetadataChanges() {
+    val base =
+      AmbientMediaSnapshot(
+        isNotificationListenerEnabled = true,
+        packageName = "music.app",
+        title = "Night Drive",
+        artist = "Fold Ambient",
+        album = "Desk Mode",
+        durationMillis = 214_000L,
+      )
+
+    assertNotEquals(base.trackKey, base.copy(artist = "Another Artist").trackKey)
+    assertNotEquals(base.trackKey, base.copy(album = "Another Album").trackKey)
+    assertNotEquals(base.trackKey, base.copy(durationMillis = 215_000L).trackKey)
+  }
+
+  @Test
+  fun trackKeyNormalizesCaseAndPunctuation() {
+    val base =
+      AmbientMediaSnapshot(
+        isNotificationListenerEnabled = true,
+        packageName = "music.app",
+        title = "Night Drive",
+        artist = "Fold Ambient",
+      )
+    val formatted = base.copy(title = "night-drive", artist = "FOLD  AMBIENT")
+
+    assertEquals(base.trackKey, formatted.trackKey)
   }
 }

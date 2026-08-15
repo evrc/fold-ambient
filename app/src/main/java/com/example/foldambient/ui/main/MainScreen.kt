@@ -61,15 +61,22 @@ import com.example.foldambient.activation.AmbientActivationSettings
 import com.example.foldambient.activation.AmbientActivationSignals
 import com.example.foldambient.activation.normalized
 import com.example.foldambient.ambient.AmbientLayoutKind
-import com.example.foldambient.ambient.AmbientPage
 import com.example.foldambient.ambient.AmbientPageDeck
 import com.example.foldambient.ambient.AmbientWidgetRegistry
 import com.example.foldambient.ambient.AmbientWidgetTemplate
 import com.example.foldambient.ambient.DefaultAmbientPages
 import com.example.foldambient.ambient.WidgetConfigurationField
 import com.example.foldambient.ambient.WidgetConfigurationFieldType
-import com.example.foldambient.ambient.WidgetConfiguration
 import com.example.foldambient.ambient.WidgetInstance
+import com.example.foldambient.ambient.addPageAfterSelected
+import com.example.foldambient.ambient.deleteSelectedPage
+import com.example.foldambient.ambient.moveSelectedPageBy
+import com.example.foldambient.ambient.replaceSelectedPageWidget
+import com.example.foldambient.ambient.selectedPageIndex
+import com.example.foldambient.ambient.slotWidgets
+import com.example.foldambient.ambient.swapSelectedPageSlots
+import com.example.foldambient.ambient.updateSelectedPageLayout
+import com.example.foldambient.ambient.updateSelectedWidgetConfiguration
 import com.example.foldambient.ambient.ui.AmbientPageRenderer
 import com.example.foldambient.ambient.widgets.defaultAmbientWidgetRegistry
 import com.example.foldambient.display.AmbientDisplaySettings
@@ -85,7 +92,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
-import java.util.UUID
 
 @Composable
 fun MainScreen(
@@ -1097,123 +1103,6 @@ private fun OptionField(
   }
 }
 
-private fun AmbientPageDeck.replaceSelectedPageWidget(
-  slotIndex: Int,
-  template: AmbientWidgetTemplate,
-): AmbientPageDeck =
-  updateSelectedPage { page ->
-    page.copy(
-      widgets =
-        page.slotWidgets().apply {
-          if (slotIndex in indices) {
-            set(slotIndex, template.toWidgetInstance())
-          }
-        }.filterNotNull(),
-    )
-  }
-
-private fun AmbientPageDeck.updateSelectedWidgetConfiguration(
-  slotIndex: Int,
-  field: WidgetConfigurationField,
-  value: String,
-): AmbientPageDeck =
-  updateSelectedWidgetConfiguration(
-    slotIndex = slotIndex,
-    values = mapOf(field.key to value),
-  )
-
-private fun AmbientPageDeck.updateSelectedWidgetConfiguration(
-  slotIndex: Int,
-  values: Map<String, String>,
-): AmbientPageDeck =
-  updateSelectedPage { page ->
-    page.copy(
-      widgets =
-        page.slotWidgets().apply {
-          val widget = getOrNull(slotIndex)
-          if (widget != null && slotIndex in indices) {
-            set(
-              slotIndex,
-              widget.copy(
-                configuration =
-                  WidgetConfiguration(
-                    values = widget.configuration.values + values,
-                  ),
-              ),
-            )
-          }
-        }.filterNotNull(),
-    )
-  }
-
-private fun AmbientPageDeck.updateSelectedPageLayout(layout: AmbientLayoutKind): AmbientPageDeck =
-  updateSelectedPage { page ->
-    if (page.layout == layout) {
-      page
-    } else {
-      page.copy(
-        layout = layout,
-        widgets = page.resizedWidgets(layout.slotCount),
-      )
-    }
-  }
-
-private fun AmbientPageDeck.swapSelectedPageSlots(slotIndex: Int): AmbientPageDeck =
-  updateSelectedPage { page ->
-    val otherSlotIndex = if (slotIndex == 0) 1 else 0
-    page.copy(
-      widgets =
-        page.slotWidgets().apply {
-          val selected = getOrNull(slotIndex)
-          set(slotIndex, getOrNull(otherSlotIndex))
-          set(otherSlotIndex, selected)
-        }.filterNotNull(),
-    )
-  }
-
-private fun AmbientPageDeck.addPageAfterSelected(): AmbientPageDeck {
-  val page = createBlankPage(pageNumber = pages.size + 1)
-  val insertIndex = (selectedPageIndex() + 1).coerceIn(0, pages.size)
-  return copy(
-    pages = pages.toMutableList().apply { add(insertIndex, page) },
-    selectedPageId = page.id,
-  )
-}
-
-private fun AmbientPageDeck.deleteSelectedPage(): AmbientPageDeck {
-  if (pages.size <= 1) return this
-  val selectedIndex = selectedPageIndex()
-  val nextPages = pages.toMutableList().apply { removeAt(selectedIndex) }
-  val nextSelectedIndex = selectedIndex.coerceAtMost(nextPages.lastIndex)
-  return copy(
-    pages = nextPages,
-    selectedPageId = nextPages[nextSelectedIndex].id,
-  )
-}
-
-private fun AmbientPageDeck.moveSelectedPageBy(offset: Int): AmbientPageDeck {
-  val fromIndex = selectedPageIndex()
-  val toIndex = (fromIndex + offset).coerceIn(0, pages.lastIndex)
-  if (fromIndex == toIndex) return this
-
-  val nextPages =
-    pages.toMutableList().apply {
-      add(toIndex, removeAt(fromIndex))
-    }
-  return copy(pages = nextPages)
-}
-
-private fun AmbientPageDeck.updateSelectedPage(transform: (AmbientPage) -> AmbientPage): AmbientPageDeck =
-  copy(
-    pages =
-      pages.map { page ->
-        if (page.id == selectedPage?.id) transform(page) else page
-      },
-  )
-
-private fun AmbientPageDeck.selectedPageIndex(): Int =
-  pages.indexOfFirst { it.id == selectedPageId }.takeIf { it >= 0 } ?: 0
-
 private fun initialVirtualPage(selectedRealPage: Int, realPageCount: Int): Int {
   if (realPageCount <= 0) return 0
   val midpoint = CyclicPagerPageCount / 2
@@ -1241,51 +1130,6 @@ private fun realPageIndex(virtualPageIndex: Int, realPageCount: Int): Int {
   if (realPageCount <= 1) return 0
   return ((virtualPageIndex % realPageCount) + realPageCount) % realPageCount
 }
-
-private fun AmbientPage.slotWidgets(): MutableList<WidgetInstance?> =
-  MutableList(layout.slotCount) { index -> widgets.getOrNull(index) }
-
-private fun AmbientPage.resizedWidgets(slotCount: Int): List<WidgetInstance> =
-  List(slotCount) { index ->
-    widgets.getOrNull(index) ?: createEmptyWidget(label = "Slot ${index + 1}")
-  }
-
-private fun AmbientWidgetTemplate.toWidgetInstance(): WidgetInstance =
-  WidgetInstance(
-    id = UUID.randomUUID().toString(),
-    widgetType = widgetType,
-    configuration = configuration,
-    appearance = appearance,
-  )
-
-private fun createBlankPage(pageNumber: Int): AmbientPage =
-  AmbientPage(
-    id = UUID.randomUUID().toString(),
-    title = "Page $pageNumber",
-    layout = AmbientLayoutKind.Duo,
-    widgets =
-      listOf(
-        createEmptyWidget(label = "Page $pageNumber", value = "Ready"),
-        createEmptyWidget(label = "Widget"),
-      ),
-  )
-
-private fun createEmptyWidget(
-  label: String,
-  value: String = "Empty",
-): WidgetInstance =
-  WidgetInstance(
-    id = UUID.randomUUID().toString(),
-    widgetType = "dummy.text",
-    configuration =
-      WidgetConfiguration(
-        values =
-          mapOf(
-            "label" to label,
-            "value" to value,
-          ),
-      ),
-  )
 
 private fun ambientWindowClass(width: Dp, height: Dp): AmbientWindowClass =
   if (width > height * 1.8f) AmbientWindowClass.WideCoverLandscape else AmbientWindowClass.Standard

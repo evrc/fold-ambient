@@ -38,6 +38,7 @@ import com.example.foldambient.lyrics.AmbientLyricsLookupResult
 import com.example.foldambient.lyrics.AmbientLyricsSource
 import com.example.foldambient.lyrics.LrcLibLyricsRepository
 import com.example.foldambient.lyrics.LyricsTrackQuery
+import com.example.foldambient.lyrics.activeLyricLineIndex
 import com.example.foldambient.media.AmbientMediaRepository
 import com.example.foldambient.media.AmbientMediaSnapshot
 import com.example.foldambient.media.AmbientPlaybackStatus
@@ -186,11 +187,7 @@ private fun SyncedLyrics(
   onSeekTo: (Long) -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  val activeIndex =
-    lines.indexOfLast { line ->
-      val startMillis = line.startMillis
-      startMillis != null && positionMillis != null && startMillis <= positionMillis
-    }.coerceAtLeast(0)
+  val activeIndex = activeLyricLineIndex(lines, positionMillis)
   val listState = rememberLazyListState()
 
   LaunchedEffect(activeIndex) {
