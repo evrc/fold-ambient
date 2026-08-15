@@ -12,3 +12,4 @@ Fold Ambient is an ambient dashboard designed primarily for the Samsung Galaxy Z
 - Use Conventional Commits for commit messages.
 - Do not silently add major dependencies or architectural frameworks.
 - Before implementing fold posture, display classification, or automatic ambient activation, consult `docs/fold6-device-findings.md` and prefer validated physical-device behavior over assumptions about foldable APIs.
+- Before expanding Android AppWidget hosting, consult `docs/android-appwidgets-investigation.md` and preserve the platform host lifecycle, binding, configuration, and cleanup obligations.

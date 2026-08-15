@@ -266,7 +266,7 @@ The initial layout expansion adds Full, Duo, and Quad as explicit page layouts. 
 
 ---
 
-# Phase 9 — Android third-party widgets
+# Phase 9 — Android third-party widgets — Completed
 
 Investigate hosting standard Android AppWidgets inside Fold Ambient.
 
@@ -298,6 +298,8 @@ Todoist
 ```
 
 This should only be attempted after Fold Ambient's own widget architecture is stable.
+
+The initial investigation adds a safe Android AppWidget host foundation: a selectable placeholder widget type, `AppWidgetHostView` rendering for an already-bound app widget ID, and documentation for the future binding/configuration/cleanup flow. A full phone-widget picker is intentionally deferred.
 
 ---
 
@@ -529,4 +531,4 @@ Current foundation:
 - command-line / VS Code development;
 - successful debug build.
 
-**Current active work:** Phase 9 — Android third-party widgets.
+**Current active work:** Phase 10 — Media widget.
