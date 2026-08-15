@@ -1,6 +1,7 @@
 package com.example.foldambient.ambient
 
 import android.content.Context
+import android.util.Log
 
 class SharedPreferencesAmbientPageRepository(
   context: Context,
@@ -14,8 +15,12 @@ class SharedPreferencesAmbientPageRepository(
       return DefaultAmbientPages.createDeck().also(::saveDeck)
     }
 
-    return runCatching { AmbientPageDeckCodec.normalize(AmbientPageDeckCodec.decode(storedDeck)) }
-      .getOrElse { DefaultAmbientPages.createDeck() }
+    val recoveryLogger = AmbientPageDeckRecoveryLogger { message -> Log.w(LogTag, message) }
+    return runCatching { AmbientPageDeckCodec.decode(storedDeck, recoveryLogger) }
+      .getOrElse { error ->
+        Log.w(LogTag, "stored page deck is unreadable, using default deck", error)
+        DefaultAmbientPages.createDeck()
+      }
       .also(::saveDeck)
   }
 
@@ -25,3 +30,4 @@ class SharedPreferencesAmbientPageRepository(
 }
 
 private const val KEY_DECK_JSON = "deck_json"
+private const val LogTag = "FoldAmbientPersistence"
