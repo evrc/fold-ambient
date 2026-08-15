@@ -1,13 +1,11 @@
 package com.example.foldambient.ambient.ui
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,7 +36,6 @@ fun AmbientPageRenderer(
         widget = page.widgets.firstOrNull(),
         widgetRegistry = widgetRegistry,
         isEditing = isEditing,
-        isSelected = selectedSlotIndex == 0,
         slotIndex = 0,
         onSlotLongPress = onSlotLongPress,
         onSlotClick = onSlotClick,
@@ -72,7 +69,6 @@ private fun FullLayout(
   widget: WidgetInstance?,
   widgetRegistry: AmbientWidgetRegistry,
   isEditing: Boolean,
-  isSelected: Boolean,
   slotIndex: Int,
   onSlotLongPress: (Int) -> Unit,
   onSlotClick: (Int) -> Unit,
@@ -82,7 +78,6 @@ private fun FullLayout(
     widget = widget,
     widgetRegistry = widgetRegistry,
     isEditing = isEditing,
-    isSelected = isSelected,
     slotIndex = slotIndex,
     onSlotLongPress = onSlotLongPress,
     onSlotClick = onSlotClick,
@@ -109,7 +104,6 @@ private fun DuoLayout(
         widget = widgets.getOrNull(index),
         widgetRegistry = widgetRegistry,
         isEditing = isEditing,
-        isSelected = selectedSlotIndex == index,
         slotIndex = index,
         onSlotLongPress = onSlotLongPress,
         onSlotClick = onSlotClick,
@@ -144,7 +138,6 @@ private fun QuadLayout(
             widget = widgets.getOrNull(slotIndex),
             widgetRegistry = widgetRegistry,
             isEditing = isEditing,
-            isSelected = selectedSlotIndex == slotIndex,
             slotIndex = slotIndex,
             onSlotLongPress = onSlotLongPress,
             onSlotClick = onSlotClick,
@@ -161,19 +154,11 @@ private fun WidgetSlot(
   widget: WidgetInstance?,
   widgetRegistry: AmbientWidgetRegistry,
   isEditing: Boolean,
-  isSelected: Boolean,
   slotIndex: Int,
   onSlotLongPress: (Int) -> Unit,
   onSlotClick: (Int) -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  val borderColor =
-    when {
-      isSelected -> Color.White
-      isEditing -> Color(0xFF6B7280)
-      else -> Color(0xFF1F2937)
-    }
-
   Column(
     modifier =
       modifier
@@ -186,7 +171,6 @@ private fun WidgetSlot(
             },
           )
         }
-        .border(1.dp, borderColor, RoundedCornerShape(8.dp))
         .padding(28.dp),
   ) {
     val renderer = widget?.let(widgetRegistry::widgetFor)
