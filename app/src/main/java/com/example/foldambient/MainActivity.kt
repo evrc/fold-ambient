@@ -25,13 +25,16 @@ import com.example.foldambient.activation.AmbientActivationSignals
 import com.example.foldambient.activation.SharedPreferencesAmbientActivationSettingsRepository
 import com.example.foldambient.ambient.SharedPreferencesAmbientPageRepository
 import com.example.foldambient.ambient.widgets.defaultAmbientWidgetRegistry
+import com.example.foldambient.display.AmbientDisplaySettings
 import com.example.foldambient.display.AmbientDisplayPolicy
+import com.example.foldambient.display.SharedPreferencesAmbientDisplaySettingsRepository
 import com.example.foldambient.theme.FoldAmbientTheme
 import com.example.foldambient.ui.main.MainScreen
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
   private var requestedAmbientWindowMode = false
+  private var ambientDisplaySettings = AmbientDisplaySettings()
   private val activationSignalsState = mutableStateOf(AmbientActivationSignals())
   private val userInteractionTickState = mutableStateOf(0L)
   private lateinit var activationMonitor: AmbientActivationMonitor
@@ -58,8 +61,13 @@ class MainActivity : ComponentActivity() {
         remember {
           SharedPreferencesAmbientActivationSettingsRepository(applicationContext)
         }
+      val displaySettingsRepository =
+        remember {
+          SharedPreferencesAmbientDisplaySettingsRepository(applicationContext)
+        }
       var pageDeck by remember { mutableStateOf(pageRepository.loadDeck()) }
       var activationSettings by remember { mutableStateOf(activationSettingsRepository.load()) }
+      var displaySettings by remember { mutableStateOf(displaySettingsRepository.load()) }
       val activationSignals by activationSignalsState
       val activationEvaluation =
         AmbientActivationPolicy.evaluate(
@@ -68,14 +76,15 @@ class MainActivity : ComponentActivity() {
         )
       val widgetRegistry = remember { defaultAmbientWidgetRegistry() }
 
-      LaunchedEffect(isAmbientActive, userInteractionTick) {
+      LaunchedEffect(isAmbientActive, userInteractionTick, displaySettings.idleDelayMillis) {
         isAmbientIdle = false
         if (isAmbientActive) {
-          delay(AmbientDisplayPolicy.IdleDelayMillis)
+          delay(displaySettings.idleDelayMillis)
           isAmbientIdle = true
         }
       }
-      LaunchedEffect(isAmbientActive, isAmbientIdle) {
+      LaunchedEffect(isAmbientActive, isAmbientIdle, displaySettings) {
+        ambientDisplaySettings = displaySettings
         setAmbientWindowMode(
           isAmbientActive = isAmbientActive,
           isIdle = isAmbientIdle,
@@ -127,6 +136,7 @@ class MainActivity : ComponentActivity() {
             activationSettings = activationSettings,
             activationSignals = activationSignals,
             activationEvaluation = activationEvaluation,
+            displaySettings = displaySettings,
             isAmbientIdle = isAmbientIdle,
             onPageDeckChange = { updatedDeck ->
               pageDeck = updatedDeck
@@ -135,6 +145,10 @@ class MainActivity : ComponentActivity() {
             onActivationSettingsChange = { updatedSettings ->
               activationSettings = updatedSettings
               activationSettingsRepository.save(updatedSettings)
+            },
+            onDisplaySettingsChange = { updatedSettings ->
+              displaySettings = updatedSettings
+              displaySettingsRepository.save(updatedSettings)
             },
             onAmbientActiveChange = { shouldBeActive ->
               if (shouldBeActive) {
@@ -195,15 +209,20 @@ class MainActivity : ComponentActivity() {
           AmbientDisplayPolicy.brightnessFor(
             isAmbientActive = isAmbientActive,
             isIdle = isIdle,
+            settings = ambientDisplaySettings,
           )
       }
 
-    if (isAmbientActive) {
+    if (isAmbientActive && ambientDisplaySettings.keepScreenOn) {
       window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    } else {
+      window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
+
+    if (isAmbientActive) {
       controller?.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
       controller?.hide(WindowInsets.Type.systemBars())
     } else {
-      window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
       controller?.show(WindowInsets.Type.systemBars())
     }
   }

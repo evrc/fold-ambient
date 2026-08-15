@@ -72,6 +72,8 @@ import com.example.foldambient.ambient.WidgetConfiguration
 import com.example.foldambient.ambient.WidgetInstance
 import com.example.foldambient.ambient.ui.AmbientPageRenderer
 import com.example.foldambient.ambient.widgets.defaultAmbientWidgetRegistry
+import com.example.foldambient.display.AmbientDisplaySettings
+import com.example.foldambient.display.normalized
 import com.example.foldambient.theme.FoldAmbientTheme
 import com.example.foldambient.weather.OpenMeteoGeocodingRepository
 import com.example.foldambient.weather.PhoneWeatherLocationProvider
@@ -99,9 +101,11 @@ fun MainScreen(
       isHingeInRange = false,
       isChargingSatisfied = true,
     ),
+  displaySettings: AmbientDisplaySettings = AmbientDisplaySettings(),
   isAmbientIdle: Boolean = false,
   onPageDeckChange: (AmbientPageDeck) -> Unit,
   onActivationSettingsChange: (AmbientActivationSettings) -> Unit = {},
+  onDisplaySettingsChange: (AmbientDisplaySettings) -> Unit = {},
   onAmbientActiveChange: (Boolean) -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -109,6 +113,7 @@ fun MainScreen(
     AmbientDashboard(
       pageDeck = pageDeck,
       widgetRegistry = widgetRegistry,
+      displaySettings = displaySettings,
       isAmbientIdle = isAmbientIdle,
       onPageDeckChange = onPageDeckChange,
       onExit = { onAmbientActiveChange(false) },
@@ -119,7 +124,9 @@ fun MainScreen(
       activationSettings = activationSettings,
       activationSignals = activationSignals,
       activationEvaluation = activationEvaluation,
+      displaySettings = displaySettings,
       onActivationSettingsChange = onActivationSettingsChange,
+      onDisplaySettingsChange = onDisplaySettingsChange,
       onEnter = { onAmbientActiveChange(true) },
       modifier = modifier,
     )
@@ -131,7 +138,9 @@ private fun EntryShell(
   activationSettings: AmbientActivationSettings,
   activationSignals: AmbientActivationSignals,
   activationEvaluation: AmbientActivationEvaluation,
+  displaySettings: AmbientDisplaySettings,
   onActivationSettingsChange: (AmbientActivationSettings) -> Unit,
+  onDisplaySettingsChange: (AmbientDisplaySettings) -> Unit,
   onEnter: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -139,6 +148,7 @@ private fun EntryShell(
     modifier = modifier
       .fillMaxSize()
       .background(Night)
+      .verticalScroll(rememberScrollState())
       .padding(32.dp),
     verticalArrangement = Arrangement.Center,
   ) {
@@ -165,6 +175,11 @@ private fun EntryShell(
       signals = activationSignals,
       evaluation = activationEvaluation,
       onSettingsChange = onActivationSettingsChange,
+    )
+    SectionSpacer()
+    DisplaySettingsPanel(
+      settings = displaySettings,
+      onSettingsChange = onDisplaySettingsChange,
     )
   }
 }
@@ -263,9 +278,130 @@ private fun AutoActivationPanel(
 }
 
 @Composable
+private fun DisplaySettingsPanel(
+  settings: AmbientDisplaySettings,
+  onSettingsChange: (AmbientDisplaySettings) -> Unit,
+) {
+  val normalized = settings.normalized()
+  Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Text(
+      text = "Display",
+      color = Color.White,
+      style = MaterialTheme.typography.titleSmall,
+    )
+
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Text(
+        text = "Keep screen on",
+        color = Color.White,
+        style = MaterialTheme.typography.bodyLarge,
+      )
+      Switch(
+        checked = normalized.keepScreenOn,
+        onCheckedChange = { keepScreenOn ->
+          onSettingsChange(normalized.copy(keepScreenOn = keepScreenOn).normalized())
+        },
+      )
+    }
+
+    SettingSlider(
+      label = "Active brightness ${normalized.activeBrightness.toPercent()}%",
+      value = normalized.activeBrightness,
+      valueRange = 0.02f..1f,
+      onValueChange = { brightness ->
+        onSettingsChange(normalized.copy(activeBrightness = brightness).normalized())
+      },
+    )
+    SettingSlider(
+      label = "Idle brightness ${normalized.idleBrightness.toPercent()}%",
+      value = normalized.idleBrightness,
+      valueRange = 0.02f..normalized.activeBrightness.coerceAtLeast(0.03f),
+      onValueChange = { brightness ->
+        onSettingsChange(normalized.copy(idleBrightness = brightness).normalized())
+      },
+    )
+    SettingSlider(
+      label = "Dim after ${normalized.idleDelayMillis.toSeconds()}s",
+      value = normalized.idleDelayMillis / 1_000f,
+      valueRange = 30f..300f,
+      onValueChange = { seconds ->
+        onSettingsChange(normalized.copy(idleDelayMillis = seconds.roundToInt() * 1_000L).normalized())
+      },
+    )
+
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Text(
+        text = "Pixel shift",
+        color = Color.White,
+        style = MaterialTheme.typography.bodyLarge,
+      )
+      Switch(
+        checked = normalized.pixelShiftEnabled,
+        onCheckedChange = { enabled ->
+          onSettingsChange(normalized.copy(pixelShiftEnabled = enabled).normalized())
+        },
+      )
+    }
+
+    if (normalized.pixelShiftEnabled) {
+      SettingSlider(
+        label = "Shift active ${normalized.pixelShiftActiveIntervalMillis.toSeconds()}s",
+        value = normalized.pixelShiftActiveIntervalMillis / 1_000f,
+        valueRange = 15f..180f,
+        onValueChange = { seconds ->
+          onSettingsChange(
+            normalized.copy(pixelShiftActiveIntervalMillis = seconds.roundToInt() * 1_000L)
+              .normalized(),
+          )
+        },
+      )
+      SettingSlider(
+        label = "Shift idle ${normalized.pixelShiftIdleIntervalMillis.toSeconds()}s",
+        value = normalized.pixelShiftIdleIntervalMillis / 1_000f,
+        valueRange = 15f..180f,
+        onValueChange = { seconds ->
+          onSettingsChange(
+            normalized.copy(pixelShiftIdleIntervalMillis = seconds.roundToInt() * 1_000L)
+              .normalized(),
+          )
+        },
+      )
+    }
+  }
+}
+
+@Composable
+private fun SettingSlider(
+  label: String,
+  value: Float,
+  valueRange: ClosedFloatingPointRange<Float>,
+  onValueChange: (Float) -> Unit,
+) {
+  Text(
+    text = label,
+    color = Muted,
+    style = MaterialTheme.typography.labelLarge,
+  )
+  Slider(
+    value = value.coerceIn(valueRange.start, valueRange.endInclusive),
+    onValueChange = onValueChange,
+    valueRange = valueRange,
+  )
+}
+
+@Composable
 private fun AmbientDashboard(
   pageDeck: AmbientPageDeck,
   widgetRegistry: AmbientWidgetRegistry,
+  displaySettings: AmbientDisplaySettings,
   isAmbientIdle: Boolean,
   onPageDeckChange: (AmbientPageDeck) -> Unit,
   onExit: () -> Unit,
@@ -324,9 +460,15 @@ private fun AmbientDashboard(
       }
   }
 
-  LaunchedEffect(isEditing, isAmbientIdle) {
-    while (!isEditing) {
-      delay(if (isAmbientIdle) PixelShiftIdleIntervalMillis else PixelShiftActiveIntervalMillis)
+  LaunchedEffect(isEditing, isAmbientIdle, displaySettings) {
+    while (!isEditing && displaySettings.pixelShiftEnabled) {
+      delay(
+        if (isAmbientIdle) {
+          displaySettings.pixelShiftIdleIntervalMillis
+        } else {
+          displaySettings.pixelShiftActiveIntervalMillis
+        },
+      )
       pixelShiftIndex = (pixelShiftIndex + 1) % PixelShiftSteps.size
     }
   }
@@ -345,7 +487,12 @@ private fun AmbientDashboard(
     val canConfigureSelectedWidget =
       selectedWidgetRenderer?.configurationSpec?.isEmpty == false
     val editPanelMaxHeight = if (maxWidth > maxHeight) maxHeight * 0.52f else maxHeight * 0.38f
-    val pixelShift = if (isEditing) PixelShiftOrigin else PixelShiftSteps[pixelShiftIndex]
+    val pixelShift =
+      if (isEditing || !displaySettings.pixelShiftEnabled) {
+        PixelShiftOrigin
+      } else {
+        PixelShiftSteps[pixelShiftIndex]
+      }
     val animatedPixelShiftX by animateDpAsState(
       targetValue = pixelShift.x,
       animationSpec = tween(durationMillis = 1_200, easing = FastOutSlowInEasing),
@@ -1160,6 +1307,10 @@ private fun activationStatusText(
 private fun Float.roundToTenth(): String =
   ((this * 10f).roundToInt() / 10f).toString()
 
+private fun Float.toPercent(): Int = (this * 100f).roundToInt()
+
+private fun Long.toSeconds(): Long = this / 1_000L
+
 private fun Context.hasCoarseLocationPermission(): Boolean =
   checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
@@ -1194,6 +1345,7 @@ fun AmbientDashboardCoverPreview() {
     AmbientDashboard(
       pageDeck = previewPageDeck,
       widgetRegistry = previewWidgetRegistry,
+      displaySettings = AmbientDisplaySettings(),
       isAmbientIdle = false,
       onPageDeckChange = {},
       onExit = {},
@@ -1208,6 +1360,7 @@ fun AmbientDashboardStandardPreview() {
     AmbientDashboard(
       pageDeck = previewPageDeck,
       widgetRegistry = previewWidgetRegistry,
+      displaySettings = AmbientDisplaySettings(),
       isAmbientIdle = false,
       onPageDeckChange = {},
       onExit = {},
@@ -1220,8 +1373,6 @@ private val Muted = Color(0xFF9CA3AF)
 private const val CyclicPagerPageCount = 10_000
 private const val PageIndicatorHideDelayMillis = 1_200L
 private const val LocationSearchDebounceMillis = 350L
-private const val PixelShiftActiveIntervalMillis = 45_000L
-private const val PixelShiftIdleIntervalMillis = 25_000L
 private data class PixelShiftStep(val x: Dp, val y: Dp)
 private val PixelShiftOrigin = PixelShiftStep(x = 0.dp, y = 0.dp)
 private val PixelShiftSteps =

@@ -451,7 +451,7 @@ The initial visual polish pass gives Fold Ambient a stable night-friendly theme,
 
 ---
 
-# Phase 15 — Settings and persistence
+# Phase 15 — Settings and persistence — Completed
 
 Consolidate user-facing configuration.
 
@@ -470,6 +470,8 @@ Potential settings:
 - themes.
 
 Use an appropriate lightweight Android persistence solution such as DataStore unless project requirements later justify something else.
+
+This pass consolidates the remaining display and OLED-protection preferences into persisted settings: keep-screen-on behavior, active and idle brightness, idle dim timing, and pixel-shift behavior. It intentionally continues the existing small SharedPreferences repository pattern already used for page configuration and automatic activation settings, avoiding a storage migration or new persistence dependency until there is a stronger reason.
 
 ---
 
@@ -541,4 +543,4 @@ Current foundation:
 - command-line / VS Code development;
 - successful debug build.
 
-**Current active work:** Phase 15 — Settings and persistence.
+**Current active work:** Future possibilities / next milestone selection.
