@@ -73,6 +73,11 @@ class MediaWidget : AmbientWidget {
       onOpenNotificationSettings = {
         context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
       },
+      onOpenMediaApp = { packageName ->
+        context.packageManager.getLaunchIntentForPackage(packageName)
+          ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+          ?.let(context::startActivity)
+      },
       modifier = modifier,
     )
   }
@@ -83,6 +88,7 @@ private fun MediaWidgetContent(
   snapshot: AmbientMediaSnapshot,
   repository: AmbientMediaRepository,
   onOpenNotificationSettings: () -> Unit,
+  onOpenMediaApp: (String) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   Column(
@@ -103,6 +109,7 @@ private fun MediaWidgetContent(
       else -> ActiveMedia(
         snapshot = snapshot,
         repository = repository,
+        onOpenMediaApp = onOpenMediaApp,
       )
     }
   }
@@ -112,6 +119,7 @@ private fun MediaWidgetContent(
 private fun ActiveMedia(
   snapshot: AmbientMediaSnapshot,
   repository: AmbientMediaRepository,
+  onOpenMediaApp: (String) -> Unit,
 ) {
   BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
     val coverSize = mediaCoverSize(maxWidth = maxWidth, maxHeight = maxHeight)
@@ -123,6 +131,7 @@ private fun ActiveMedia(
       MediaArtwork(
         snapshot = snapshot,
         coverSize = coverSize,
+        onOpenMediaApp = onOpenMediaApp,
       )
 
       Column(
@@ -136,6 +145,7 @@ private fun ActiveMedia(
           style = MaterialTheme.typography.headlineSmall,
           maxLines = 2,
           overflow = TextOverflow.Ellipsis,
+          modifier = Modifier.openMediaAppOnDoubleTap(snapshot.packageName, onOpenMediaApp),
         )
         Text(
           text = snapshot.artist ?: snapshot.album ?: snapshot.packageName.orEmpty(),
@@ -163,18 +173,22 @@ private fun ActiveMedia(
 private fun MediaArtwork(
   snapshot: AmbientMediaSnapshot,
   coverSize: Dp,
+  onOpenMediaApp: (String) -> Unit,
 ) {
   val artwork = snapshot.artwork
+  val modifier = Modifier
+    .size(coverSize)
+    .openMediaAppOnDoubleTap(snapshot.packageName, onOpenMediaApp)
   if (artwork != null) {
     Image(
       bitmap = artwork.asImageBitmap(),
       contentDescription = null,
-      modifier = Modifier.size(coverSize),
+      modifier = modifier,
       contentScale = ContentScale.Crop,
     )
   } else {
     Box(
-      modifier = Modifier.size(coverSize),
+      modifier = modifier,
       contentAlignment = Alignment.Center,
     ) {
       Text(
@@ -395,6 +409,18 @@ private enum class MediaControlIconKind {
   Pause,
   Play,
   Previous,
+}
+
+private fun Modifier.openMediaAppOnDoubleTap(
+  packageName: String?,
+  onOpenMediaApp: (String) -> Unit,
+): Modifier {
+  if (packageName.isNullOrBlank()) return this
+  return pointerInput(packageName) {
+    detectTapGestures(
+      onDoubleTap = { onOpenMediaApp(packageName) },
+    )
+  }
 }
 
 private fun mediaCoverSize(maxWidth: Dp, maxHeight: Dp): Dp {
