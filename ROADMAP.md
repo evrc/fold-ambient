@@ -42,7 +42,7 @@ Validated physical-device findings are recorded in `docs/fold6-device-findings.m
 
 ---
 
-# Phase 2 — Ambient application shell
+# Phase 2 — Ambient application shell — Completed
 
 Build the basic runtime environment in which widgets will eventually live.
 
@@ -57,6 +57,8 @@ Implement:
 - correct resizing when moving between cover and inner displays.
 
 Automatic tent/wedge activation is intentionally deferred until the widget experience works.
+
+The initial shell provides manual entry into a fullscreen ambient dashboard, keeps the screen awake only while ambient mode is active, hides system bars during ambient mode, and adapts its placeholder layout to wide cover-screen landscape geometry.
 
 ---
 
@@ -515,4 +517,4 @@ Current foundation:
 - command-line / VS Code development;
 - successful debug build.
 
-**Current active work:** Phase 2 — Ambient application shell.
+**Current active work:** Phase 3 — Widget and page engine.

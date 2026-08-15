@@ -47,8 +47,6 @@ dependencies {
   implementation(composeBom)
 
   implementation(libs.androidx.activity.compose)
-  implementation(libs.androidx.lifecycle.runtime.ktx)
-  implementation(libs.androidx.window)
 
   implementation(libs.androidx.compose.ui)
   implementation(libs.androidx.compose.ui.tooling.preview)

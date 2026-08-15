@@ -1,35 +1,60 @@
 package com.example.foldambient.ui.main
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.example.foldambient.diagnostics.DeviceDiagnostics
-import com.example.foldambient.diagnostics.FoldingFeatureDiagnostics
 import com.example.foldambient.theme.FoldAmbientTheme
 
 @Composable
 fun MainScreen(
-  diagnostics: DeviceDiagnostics,
+  isAmbientActive: Boolean,
+  onAmbientActiveChange: (Boolean) -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  if (isAmbientActive) {
+    AmbientDashboard(
+      onExit = { onAmbientActiveChange(false) },
+      modifier = modifier,
+    )
+  } else {
+    EntryShell(
+      onEnter = { onAmbientActiveChange(true) },
+      modifier = modifier,
+    )
+  }
+}
+
+@Composable
+private fun EntryShell(
+  onEnter: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   Column(
     modifier = modifier
       .fillMaxSize()
-      .background(Color(0xFF05070A))
-      .verticalScroll(rememberScrollState())
-      .padding(24.dp),
+      .background(Night)
+      .padding(32.dp),
+    verticalArrangement = Arrangement.Center,
   ) {
     Text(
       text = "Fold Ambient",
@@ -37,73 +62,116 @@ fun MainScreen(
       style = MaterialTheme.typography.headlineMedium,
     )
     Text(
-      text = "Diagnostics",
-      color = Color(0xFF9CA3AF),
+      text = "Ready",
+      color = Muted,
       style = MaterialTheme.typography.titleMedium,
     )
-
     SectionSpacer()
-    DiagnosticRow("App display ID", diagnostics.displayId)
-    DiagnosticRow("Display rotation", diagnostics.displayRotation)
-    DiagnosticRow("Window width px", diagnostics.windowWidthPx.toString())
-    DiagnosticRow("Window height px", diagnostics.windowHeightPx.toString())
-    DiagnosticRow("Orientation", diagnostics.orientation)
-
-    SectionSpacer()
-    Text(
-      text = "Folding features",
-      color = Color.White,
-      style = MaterialTheme.typography.titleMedium,
-    )
-    if (diagnostics.foldingFeatures.isEmpty()) {
-      DiagnosticRow("Reported", "None")
-    } else {
-      diagnostics.foldingFeatures.forEachIndexed { index, feature ->
-        FoldingFeatureBlock(index = index + 1, feature = feature)
-      }
+    Button(
+      onClick = onEnter,
+      colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Night),
+    ) {
+      Text("Enter ambient")
     }
-
-    SectionSpacer()
-    DiagnosticRow(
-      label = "TYPE_HINGE_ANGLE",
-      value = if (diagnostics.isHingeAngleSensorAvailable) "Available" else "Unavailable",
-    )
-    DiagnosticRow(
-      label = "Hinge angle",
-      value = diagnostics.hingeAngleDegrees?.let { "%.1f deg".format(it) } ?: "Not reported",
-    )
   }
 }
 
 @Composable
-private fun FoldingFeatureBlock(index: Int, feature: FoldingFeatureDiagnostics) {
-  SectionSpacer()
-  Text(
-    text = "Feature $index",
-    color = Color.White,
-    style = MaterialTheme.typography.titleSmall,
-  )
-  DiagnosticRow("State", feature.state)
-  DiagnosticRow("Orientation", feature.orientation)
-  DiagnosticRow("Bounds", feature.bounds)
-  DiagnosticRow("Occlusion type", feature.occlusionType)
-  DiagnosticRow("Is separating", feature.isSeparating.toString())
+private fun AmbientDashboard(
+  onExit: () -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  BoxWithConstraints(
+    modifier = modifier
+      .fillMaxSize()
+      .background(Color.Black)
+      .padding(18.dp),
+  ) {
+    val windowClass = ambientWindowClass(maxWidth, maxHeight)
+    Column(
+      modifier = Modifier.fillMaxSize(),
+      verticalArrangement = Arrangement.SpaceBetween,
+    ) {
+      AmbientContent(
+        windowClass = windowClass,
+        modifier = Modifier
+          .weight(1f)
+          .fillMaxWidth(),
+      )
+      TextButton(onClick = onExit) {
+        Text("Exit", color = Muted)
+      }
+    }
+  }
 }
 
 @Composable
-private fun DiagnosticRow(label: String, value: String) {
-  Column(modifier = Modifier.padding(top = 10.dp)) {
+private fun AmbientContent(
+  windowClass: AmbientWindowClass,
+  modifier: Modifier = Modifier,
+) {
+  if (windowClass == AmbientWindowClass.WideCoverLandscape) {
+    Row(
+      modifier = modifier,
+      horizontalArrangement = Arrangement.spacedBy(18.dp),
+    ) {
+      AmbientPane(
+        title = "Fold Ambient",
+        value = "Ready",
+        modifier = Modifier.weight(1f),
+      )
+      AmbientPane(
+        title = "Page",
+        value = "1",
+        modifier = Modifier.weight(1f),
+      )
+    }
+  } else {
+    Column(
+      modifier = modifier,
+      verticalArrangement = Arrangement.Center,
+    ) {
+      AmbientPane(
+        title = "Fold Ambient",
+        value = "Ready",
+        modifier = Modifier.fillMaxWidth(),
+      )
+    }
+  }
+}
+
+@Composable
+private fun AmbientPane(
+  title: String,
+  value: String,
+  modifier: Modifier = Modifier,
+) {
+  Column(
+    modifier = modifier
+      .fillMaxSize()
+      .border(1.dp, Color(0xFF1F2937), RoundedCornerShape(8.dp))
+      .padding(28.dp),
+    verticalArrangement = Arrangement.Center,
+  ) {
     Text(
-      text = label,
-      color = Color(0xFF9CA3AF),
-      style = MaterialTheme.typography.labelLarge,
+      text = title,
+      color = Muted,
+      style = MaterialTheme.typography.titleMedium,
     )
     Text(
       text = value,
       color = Color.White,
-      style = MaterialTheme.typography.bodyLarge,
+      style = MaterialTheme.typography.displaySmall,
     )
   }
+}
+
+private fun ambientWindowClass(width: Dp, height: Dp): AmbientWindowClass =
+  if (width > height * 1.8f) AmbientWindowClass.WideCoverLandscape else AmbientWindowClass.Standard
+
+private enum class AmbientWindowClass {
+  Standard,
+  WideCoverLandscape,
 }
 
 @Composable
@@ -114,30 +182,29 @@ private fun SectionSpacer() {
 @Preview(showBackground = true)
 @Composable
 fun MainScreenPreview() {
-  FoldAmbientTheme { MainScreen(diagnostics = previewDiagnostics) }
+  FoldAmbientTheme {
+    MainScreen(
+      isAmbientActive = false,
+      onAmbientActiveChange = {},
+    )
+  }
 }
 
-@Preview(showBackground = true, widthDp = 340)
+@Preview(showBackground = true, widthDp = 720, heightDp = 320)
 @Composable
-fun MainScreenPortraitPreview() {
-  FoldAmbientTheme { MainScreen(diagnostics = previewDiagnostics) }
+fun AmbientDashboardCoverPreview() {
+  FoldAmbientTheme {
+    AmbientDashboard(onExit = {})
+  }
 }
 
-private val previewDiagnostics = DeviceDiagnostics(
-  displayId = "0",
-  displayRotation = "ROTATION_0",
-  windowWidthPx = 904,
-  windowHeightPx = 2316,
-  orientation = "Portrait",
-  foldingFeatures = listOf(
-    FoldingFeatureDiagnostics(
-      state = "HALF_OPENED",
-      orientation = "HORIZONTAL",
-      bounds = "Rect(0, 1120 - 904, 1160)",
-      occlusionType = "NONE",
-      isSeparating = true,
-    ),
-  ),
-  isHingeAngleSensorAvailable = true,
-  hingeAngleDegrees = 73.4f,
-)
+@Preview(showBackground = true, widthDp = 420, heightDp = 560)
+@Composable
+fun AmbientDashboardStandardPreview() {
+  FoldAmbientTheme {
+    AmbientDashboard(onExit = {})
+  }
+}
+
+private val Night = Color(0xFF05070A)
+private val Muted = Color(0xFF9CA3AF)
