@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -329,6 +331,7 @@ private fun AmbientDashboard(
     val selectedWidgetRenderer = selectedWidget?.let(widgetRegistry::widgetFor)
     val canConfigureSelectedWidget =
       selectedWidgetRenderer?.configurationSpec?.isEmpty == false
+    val editPanelMaxHeight = if (maxWidth > maxHeight) maxHeight * 0.52f else maxHeight * 0.38f
     val pixelShift = if (isEditing) PixelShiftOrigin else PixelShiftSteps[pixelShiftIndex]
     val animatedPixelShiftX by animateDpAsState(
       targetValue = pixelShift.x,
@@ -414,86 +417,90 @@ private fun AmbientDashboard(
       }
 
       if (isEditing && selectedPage != null) {
-        PageEditorBar(
-          pageTitle = selectedPage.title,
-          pageCount = pageDeck.pages.size,
-          selectedLayout = selectedPage.layout,
-          canSwapWidgets = selectedPage.layout == AmbientLayoutKind.Duo,
-          canConfigureWidget = canConfigureSelectedWidget,
-          canMovePageLeft = selectedPageIndex > 0,
-          canMovePageRight = selectedPageIndex < pageDeck.pages.lastIndex,
-          canDeletePage = pageDeck.pages.size > 1,
-          onSwapWidgets = {
-            onPageDeckChange(pageDeck.swapSelectedPageSlots(selectedSlotIndex))
-          },
-          onAddPage = {
-            onPageDeckChange(pageDeck.addPageAfterSelected())
-            selectedSlotIndex = 0
-            isPickerOpen = false
-            isConfigurationOpen = false
-          },
-          onConfigureWidget = {
-            isPickerOpen = false
-            isConfigurationOpen = !isConfigurationOpen
-          },
-          onLayoutSelected = { layout ->
-            onPageDeckChange(pageDeck.updateSelectedPageLayout(layout))
-            selectedSlotIndex = selectedSlotIndex.coerceAtMost(layout.slotCount - 1)
-            isPickerOpen = false
-            isConfigurationOpen = false
-          },
-          onMovePageLeft = {
-            onPageDeckChange(pageDeck.moveSelectedPageBy(-1))
-          },
-          onMovePageRight = {
-            onPageDeckChange(pageDeck.moveSelectedPageBy(1))
-          },
-          onDeletePage = {
-            onPageDeckChange(pageDeck.deleteSelectedPage())
-            selectedSlotIndex = 0
-            isPickerOpen = false
-            isConfigurationOpen = false
-          },
-          onDone = {
-            isEditing = false
-            isPickerOpen = false
-            isConfigurationOpen = false
-          },
-          onExit = onExit,
-        )
-      }
+        Column(
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .heightIn(max = editPanelMaxHeight)
+              .verticalScroll(rememberScrollState()),
+          verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+          PageEditorBar(
+            pageTitle = selectedPage.title,
+            pageCount = pageDeck.pages.size,
+            selectedLayout = selectedPage.layout,
+            canSwapWidgets = selectedPage.layout == AmbientLayoutKind.Duo,
+            canConfigureWidget = canConfigureSelectedWidget,
+            canMovePageLeft = selectedPageIndex > 0,
+            canMovePageRight = selectedPageIndex < pageDeck.pages.lastIndex,
+            canDeletePage = pageDeck.pages.size > 1,
+            onSwapWidgets = {
+              onPageDeckChange(pageDeck.swapSelectedPageSlots(selectedSlotIndex))
+            },
+            onAddPage = {
+              onPageDeckChange(pageDeck.addPageAfterSelected())
+              selectedSlotIndex = 0
+              isPickerOpen = false
+              isConfigurationOpen = false
+            },
+            onConfigureWidget = {
+              isPickerOpen = false
+              isConfigurationOpen = !isConfigurationOpen
+            },
+            onLayoutSelected = { layout ->
+              onPageDeckChange(pageDeck.updateSelectedPageLayout(layout))
+              selectedSlotIndex = selectedSlotIndex.coerceAtMost(layout.slotCount - 1)
+              isPickerOpen = false
+              isConfigurationOpen = false
+            },
+            onMovePageLeft = {
+              onPageDeckChange(pageDeck.moveSelectedPageBy(-1))
+            },
+            onMovePageRight = {
+              onPageDeckChange(pageDeck.moveSelectedPageBy(1))
+            },
+            onDeletePage = {
+              onPageDeckChange(pageDeck.deleteSelectedPage())
+              selectedSlotIndex = 0
+              isPickerOpen = false
+              isConfigurationOpen = false
+            },
+            onDone = {
+              isEditing = false
+              isPickerOpen = false
+              isConfigurationOpen = false
+            },
+            onExit = onExit,
+          )
 
-      if (isEditing && isPickerOpen && selectedPage != null) {
-        WidgetPicker(
-          widgetRegistry = widgetRegistry,
-          onTemplateSelected = { template ->
-            onPageDeckChange(pageDeck.replaceSelectedPageWidget(selectedSlotIndex, template))
-            isPickerOpen = false
-            isConfigurationOpen = false
-          },
-        )
-      }
-
-      if (
-        isEditing &&
-        isConfigurationOpen &&
-        selectedWidget != null &&
-        selectedWidgetRenderer != null
-      ) {
-        WidgetConfigurationPanel(
-          widget = selectedWidget,
-          widgetName = selectedWidgetRenderer.displayName,
-          fields = selectedWidgetRenderer.configurationSpec.fields,
-          onFieldChange = { field, value ->
-            onPageDeckChange(
-              pageDeck.updateSelectedWidgetConfiguration(
-                slotIndex = selectedSlotIndex,
-                field = field,
-                value = value,
-              ),
+          if (isPickerOpen) {
+            WidgetPicker(
+              widgetRegistry = widgetRegistry,
+              onTemplateSelected = { template ->
+                onPageDeckChange(pageDeck.replaceSelectedPageWidget(selectedSlotIndex, template))
+                isPickerOpen = false
+                isConfigurationOpen = false
+              },
             )
-          },
-        )
+          }
+
+          if (isConfigurationOpen && selectedWidget != null && selectedWidgetRenderer != null) {
+            WidgetConfigurationPanel(
+              widget = selectedWidget,
+              widgetName = selectedWidgetRenderer.displayName,
+              fields = selectedWidgetRenderer.configurationSpec.fields,
+              onFieldChange = { field, value ->
+                onPageDeckChange(
+                  pageDeck.updateSelectedWidgetConfiguration(
+                    slotIndex = selectedSlotIndex,
+                    field = field,
+                    value = value,
+                  ),
+                )
+              },
+            )
+          }
+        }
       }
     }
   }
