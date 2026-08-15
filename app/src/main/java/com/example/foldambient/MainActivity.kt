@@ -25,12 +25,15 @@ import com.example.foldambient.activation.AmbientActivationSignals
 import com.example.foldambient.activation.SharedPreferencesAmbientActivationSettingsRepository
 import com.example.foldambient.ambient.SharedPreferencesAmbientPageRepository
 import com.example.foldambient.ambient.widgets.defaultAmbientWidgetRegistry
+import com.example.foldambient.display.AmbientDisplayPolicy
 import com.example.foldambient.theme.FoldAmbientTheme
 import com.example.foldambient.ui.main.MainScreen
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
   private var requestedAmbientWindowMode = false
   private val activationSignalsState = mutableStateOf(AmbientActivationSignals())
+  private val userInteractionTickState = mutableStateOf(0L)
   private lateinit var activationMonitor: AmbientActivationMonitor
 
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,6 +48,8 @@ class MainActivity : ComponentActivity() {
       var isAmbientActive by rememberSaveable { mutableStateOf(false) }
       var isAutomaticAmbientSession by rememberSaveable { mutableStateOf(false) }
       var isAutoActivationPaused by rememberSaveable { mutableStateOf(false) }
+      var isAmbientIdle by remember { mutableStateOf(false) }
+      val userInteractionTick by userInteractionTickState
       val pageRepository =
         remember {
           SharedPreferencesAmbientPageRepository(applicationContext)
@@ -63,8 +68,18 @@ class MainActivity : ComponentActivity() {
         )
       val widgetRegistry = remember { defaultAmbientWidgetRegistry() }
 
-      LaunchedEffect(isAmbientActive) {
-        setAmbientWindowMode(isAmbientActive)
+      LaunchedEffect(isAmbientActive, userInteractionTick) {
+        isAmbientIdle = false
+        if (isAmbientActive) {
+          delay(AmbientDisplayPolicy.IdleDelayMillis)
+          isAmbientIdle = true
+        }
+      }
+      LaunchedEffect(isAmbientActive, isAmbientIdle) {
+        setAmbientWindowMode(
+          isAmbientActive = isAmbientActive,
+          isIdle = isAmbientIdle,
+        )
       }
       LaunchedEffect(
         activationEvaluation.shouldActivate,
@@ -84,7 +99,12 @@ class MainActivity : ComponentActivity() {
         }
       }
       DisposableEffect(Unit) {
-        onDispose { setAmbientWindowMode(false) }
+        onDispose {
+          setAmbientWindowMode(
+            isAmbientActive = false,
+            isIdle = false,
+          )
+        }
       }
 
       FoldAmbientTheme {
@@ -107,6 +127,7 @@ class MainActivity : ComponentActivity() {
             activationSettings = activationSettings,
             activationSignals = activationSignals,
             activationEvaluation = activationEvaluation,
+            isAmbientIdle = isAmbientIdle,
             onPageDeckChange = { updatedDeck ->
               pageDeck = updatedDeck
               pageRepository.saveDeck(updatedDeck)
@@ -147,13 +168,36 @@ class MainActivity : ComponentActivity() {
     super.onStop()
   }
 
-  private fun setAmbientWindowMode(isAmbientActive: Boolean) {
-    requestedAmbientWindowMode = isAmbientActive
-    applyAmbientWindowMode(isAmbientActive)
+  override fun onUserInteraction() {
+    super.onUserInteraction()
+    userInteractionTickState.value += 1L
   }
 
-  private fun applyAmbientWindowMode(isAmbientActive: Boolean) {
+  private fun setAmbientWindowMode(
+    isAmbientActive: Boolean,
+    isIdle: Boolean,
+  ) {
+    requestedAmbientWindowMode = isAmbientActive
+    applyAmbientWindowMode(
+      isAmbientActive = isAmbientActive,
+      isIdle = isIdle,
+    )
+  }
+
+  private fun applyAmbientWindowMode(
+    isAmbientActive: Boolean,
+    isIdle: Boolean = false,
+  ) {
     val controller = window.insetsController
+    window.attributes =
+      window.attributes.apply {
+        screenBrightness =
+          AmbientDisplayPolicy.brightnessFor(
+            isAmbientActive = isAmbientActive,
+            isIdle = isIdle,
+          )
+      }
+
     if (isAmbientActive) {
       window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
       controller?.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE

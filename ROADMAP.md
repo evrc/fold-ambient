@@ -407,7 +407,7 @@ The initial automatic activation pass adds an opt-in state machine based on vali
 
 ---
 
-# Phase 13 — OLED and desk-display behavior
+# Phase 13 — OLED and desk-display behavior — Completed
 
 Because the application may remain visible for long periods on an OLED display, introduce protections and ambient-specific behavior.
 
@@ -422,6 +422,8 @@ Investigate:
 - periodic layout/content changes where appropriate.
 
 Screen-awake behavior should only be active when Fold Ambient actually needs it.
+
+The initial OLED/desk-display pass keeps the existing true-black ambient surface, applies app-window brightness reduction only while ambient mode is active, dims further after inactivity, restores normal brightness outside ambient mode, and adds subtle periodic pixel shifting for widget content. `FLAG_KEEP_SCREEN_ON` remains scoped to active ambient mode only.
 
 ---
 
@@ -537,4 +539,4 @@ Current foundation:
 - command-line / VS Code development;
 - successful debug build.
 
-**Current active work:** Phase 13 — OLED and desk-display behavior.
+**Current active work:** Phase 14 — Visual polish.

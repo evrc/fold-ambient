@@ -1,5 +1,8 @@
 package com.example.foldambient.ui.main
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -14,6 +17,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
@@ -79,6 +83,7 @@ fun MainScreen(
       isHingeInRange = false,
       isChargingSatisfied = true,
     ),
+  isAmbientIdle: Boolean = false,
   onPageDeckChange: (AmbientPageDeck) -> Unit,
   onActivationSettingsChange: (AmbientActivationSettings) -> Unit = {},
   onAmbientActiveChange: (Boolean) -> Unit,
@@ -88,6 +93,7 @@ fun MainScreen(
     AmbientDashboard(
       pageDeck = pageDeck,
       widgetRegistry = widgetRegistry,
+      isAmbientIdle = isAmbientIdle,
       onPageDeckChange = onPageDeckChange,
       onExit = { onAmbientActiveChange(false) },
       modifier = modifier,
@@ -244,6 +250,7 @@ private fun AutoActivationPanel(
 private fun AmbientDashboard(
   pageDeck: AmbientPageDeck,
   widgetRegistry: AmbientWidgetRegistry,
+  isAmbientIdle: Boolean,
   onPageDeckChange: (AmbientPageDeck) -> Unit,
   onExit: () -> Unit,
   modifier: Modifier = Modifier,
@@ -253,6 +260,7 @@ private fun AmbientDashboard(
   var isPickerOpen by remember { mutableStateOf(false) }
   var isConfigurationOpen by remember { mutableStateOf(false) }
   var isPageIndicatorVisible by remember { mutableStateOf(false) }
+  var pixelShiftIndex by remember { mutableIntStateOf(0) }
   val selectedPageIndex = pageDeck.selectedPageIndex()
   val realPageCount = pageDeck.pages.size
   val virtualPageCount = if (realPageCount > 0) CyclicPagerPageCount else 0
@@ -300,6 +308,13 @@ private fun AmbientDashboard(
       }
   }
 
+  LaunchedEffect(isEditing, isAmbientIdle) {
+    while (!isEditing) {
+      delay(if (isAmbientIdle) PixelShiftIdleIntervalMillis else PixelShiftActiveIntervalMillis)
+      pixelShiftIndex = (pixelShiftIndex + 1) % PixelShiftSteps.size
+    }
+  }
+
   BoxWithConstraints(
     modifier = modifier
       .fillMaxSize()
@@ -313,6 +328,17 @@ private fun AmbientDashboard(
     val selectedWidgetRenderer = selectedWidget?.let(widgetRegistry::widgetFor)
     val canConfigureSelectedWidget =
       selectedWidgetRenderer?.configurationSpec?.isEmpty == false
+    val pixelShift = if (isEditing) PixelShiftOrigin else PixelShiftSteps[pixelShiftIndex]
+    val animatedPixelShiftX by animateDpAsState(
+      targetValue = pixelShift.x,
+      animationSpec = tween(durationMillis = 1_200, easing = FastOutSlowInEasing),
+      label = "pixelShiftX",
+    )
+    val animatedPixelShiftY by animateDpAsState(
+      targetValue = pixelShift.y,
+      animationSpec = tween(durationMillis = 1_200, easing = FastOutSlowInEasing),
+      label = "pixelShiftY",
+    )
 
     Column(
       modifier = Modifier.fillMaxSize(),
@@ -323,36 +349,43 @@ private fun AmbientDashboard(
           .weight(1f)
           .fillMaxWidth(),
       ) {
-        HorizontalPager(
-          state = pagerState,
-          modifier = Modifier.fillMaxSize(),
-        ) { virtualPageIndex ->
-          val page = pageDeck.pages[realPageIndex(virtualPageIndex, realPageCount)]
-          AmbientPageRenderer(
-            page = page,
-            widgetRegistry = widgetRegistry,
-            preferDuo = preferDuo,
-            isEditing = isEditing && page.id == selectedPage?.id,
-            selectedSlotIndex = selectedSlotIndex,
-            onSlotLongPress = { slotIndex ->
-              selectedSlotIndex = slotIndex
-              isEditing = true
-              isPickerOpen = false
-              isConfigurationOpen = false
-              if (page.id != pageDeck.selectedPageId) {
-                onPageDeckChange(pageDeck.copy(selectedPageId = page.id))
-              }
-            },
-            onSlotClick = { slotIndex ->
-              selectedSlotIndex = slotIndex
-              isPickerOpen = true
-              isConfigurationOpen = false
-              if (page.id != pageDeck.selectedPageId) {
-                onPageDeckChange(pageDeck.copy(selectedPageId = page.id))
-              }
-            },
+        Box(
+          modifier =
+            Modifier
+              .fillMaxSize()
+              .offset(x = animatedPixelShiftX, y = animatedPixelShiftY),
+        ) {
+          HorizontalPager(
+            state = pagerState,
             modifier = Modifier.fillMaxSize(),
-          )
+          ) { virtualPageIndex ->
+            val page = pageDeck.pages[realPageIndex(virtualPageIndex, realPageCount)]
+            AmbientPageRenderer(
+              page = page,
+              widgetRegistry = widgetRegistry,
+              preferDuo = preferDuo,
+              isEditing = isEditing && page.id == selectedPage?.id,
+              selectedSlotIndex = selectedSlotIndex,
+              onSlotLongPress = { slotIndex ->
+                selectedSlotIndex = slotIndex
+                isEditing = true
+                isPickerOpen = false
+                isConfigurationOpen = false
+                if (page.id != pageDeck.selectedPageId) {
+                  onPageDeckChange(pageDeck.copy(selectedPageId = page.id))
+                }
+              },
+              onSlotClick = { slotIndex ->
+                selectedSlotIndex = slotIndex
+                isPickerOpen = true
+                isConfigurationOpen = false
+                if (page.id != pageDeck.selectedPageId) {
+                  onPageDeckChange(pageDeck.copy(selectedPageId = page.id))
+                }
+              },
+              modifier = Modifier.fillMaxSize(),
+            )
+          }
         }
 
         if (isPageIndicatorVisible && realPageCount > 1) {
@@ -891,6 +924,7 @@ fun AmbientDashboardCoverPreview() {
     AmbientDashboard(
       pageDeck = previewPageDeck,
       widgetRegistry = previewWidgetRegistry,
+      isAmbientIdle = false,
       onPageDeckChange = {},
       onExit = {},
     )
@@ -904,6 +938,7 @@ fun AmbientDashboardStandardPreview() {
     AmbientDashboard(
       pageDeck = previewPageDeck,
       widgetRegistry = previewWidgetRegistry,
+      isAmbientIdle = false,
       onPageDeckChange = {},
       onExit = {},
     )
@@ -914,5 +949,17 @@ private val Night = Color(0xFF05070A)
 private val Muted = Color(0xFF9CA3AF)
 private const val CyclicPagerPageCount = 10_000
 private const val PageIndicatorHideDelayMillis = 1_200L
+private const val PixelShiftActiveIntervalMillis = 45_000L
+private const val PixelShiftIdleIntervalMillis = 25_000L
+private data class PixelShiftStep(val x: Dp, val y: Dp)
+private val PixelShiftOrigin = PixelShiftStep(x = 0.dp, y = 0.dp)
+private val PixelShiftSteps =
+  listOf(
+    PixelShiftOrigin,
+    PixelShiftStep(x = 2.dp, y = 1.dp),
+    PixelShiftStep(x = -1.dp, y = 2.dp),
+    PixelShiftStep(x = 1.dp, y = -2.dp),
+    PixelShiftStep(x = -2.dp, y = -1.dp),
+  )
 private val previewPageDeck = DefaultAmbientPages.createDeck()
 private val previewWidgetRegistry = defaultAmbientWidgetRegistry()
