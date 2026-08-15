@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
@@ -17,6 +18,7 @@ import com.example.foldambient.ambient.AmbientLayoutKind
 import com.example.foldambient.ambient.AmbientPage
 import com.example.foldambient.ambient.AmbientWidgetRegistry
 import com.example.foldambient.ambient.WidgetInstance
+import com.example.foldambient.ambient.widgets.LocalWidgetLabelsVisible
 
 @Composable
 fun AmbientPageRenderer(
@@ -175,10 +177,12 @@ private fun WidgetSlot(
   ) {
     val renderer = widget?.let(widgetRegistry::widgetFor)
     if (widget != null && renderer != null) {
-      renderer.Content(
-        instance = widget,
-        modifier = Modifier.fillMaxSize(),
-      )
+      CompositionLocalProvider(LocalWidgetLabelsVisible provides isEditing) {
+        renderer.Content(
+          instance = widget,
+          modifier = Modifier.fillMaxSize(),
+        )
+      }
     } else {
       EmptySlot()
     }
