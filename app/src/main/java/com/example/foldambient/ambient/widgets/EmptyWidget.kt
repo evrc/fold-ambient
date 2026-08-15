@@ -15,4 +15,9 @@ class EmptyWidget : AmbientWidget {
   override fun Content(instance: WidgetInstance, modifier: Modifier) {
     Spacer(modifier = modifier.fillMaxSize())
   }
+
+  @Composable
+  override fun PreviewContent(instance: WidgetInstance, modifier: Modifier) {
+    Spacer(modifier = modifier.fillMaxSize())
+  }
 }

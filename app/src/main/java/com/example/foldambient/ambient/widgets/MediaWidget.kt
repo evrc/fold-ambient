@@ -20,7 +20,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,7 +61,7 @@ class MediaWidget : AmbientWidget {
       }
     var snapshot by remember(repository) { mutableStateOf(repository.snapshot()) }
 
-    LaunchedEffect(repository) {
+    StartedWidgetEffect(repository) {
       while (true) {
         snapshot = repository.snapshot()
         delay(if (snapshot.playbackStatus == AmbientPlaybackStatus.Playing) 1_000L else 2_500L)
@@ -83,6 +82,44 @@ class MediaWidget : AmbientWidget {
       modifier = modifier,
     )
   }
+
+  @Composable
+  override fun PreviewContent(instance: WidgetInstance, modifier: Modifier) {
+    MediaWidgetContent(
+      snapshot = PreviewMediaSnapshot,
+      repository = PreviewMediaRepository,
+      onOpenNotificationSettings = {},
+      onOpenMediaApp = {},
+      modifier = modifier,
+    )
+  }
+}
+
+private val PreviewMediaSnapshot =
+  AmbientMediaSnapshot(
+    isNotificationListenerEnabled = true,
+    packageName = "com.example.music",
+    title = "Night Drive",
+    artist = "Fold Ambient",
+    album = "Desk Mode",
+    playbackStatus = AmbientPlaybackStatus.Playing,
+    positionMillis = 74_000L,
+    durationMillis = 214_000L,
+    supportedActions =
+      setOf(
+        AmbientMediaAction.Previous,
+        AmbientMediaAction.PlayPause,
+        AmbientMediaAction.Next,
+        AmbientMediaAction.Seek,
+      ),
+  )
+
+private object PreviewMediaRepository : AmbientMediaRepository {
+  override fun snapshot(): AmbientMediaSnapshot = PreviewMediaSnapshot
+  override fun playPause() = Unit
+  override fun previous() = Unit
+  override fun next() = Unit
+  override fun seekTo(positionMillis: Long) = Unit
 }
 
 @Composable

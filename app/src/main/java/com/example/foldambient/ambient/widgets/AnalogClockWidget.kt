@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,54 +49,76 @@ class AnalogClockWidget : AmbientWidget {
   override fun Content(instance: WidgetInstance, modifier: Modifier) {
     var now by remember { mutableStateOf(LocalTime.now()) }
 
-    LaunchedEffect(Unit) {
+    StartedWidgetEffect(Unit) {
       while (true) {
         now = LocalTime.now()
         delay(1_000L)
       }
     }
 
-    Column(
-      modifier = modifier.fillMaxSize(),
-      verticalArrangement = Arrangement.Center,
+    AnalogClockContent(
+      label = instance.configuration.text("label", displayName),
+      now = now,
+      modifier = modifier,
+    )
+  }
+
+  @Composable
+  override fun PreviewContent(instance: WidgetInstance, modifier: Modifier) {
+    AnalogClockContent(
+      label = instance.configuration.text("label", displayName),
+      now = LocalTime.of(10, 10, 32),
+      modifier = modifier,
+    )
+  }
+}
+
+@Composable
+private fun AnalogClockContent(
+  label: String,
+  now: LocalTime,
+  modifier: Modifier,
+) {
+  Column(
+    modifier = modifier.fillMaxSize(),
+    verticalArrangement = Arrangement.Center,
+  ) {
+    WidgetLabel(label)
+    Canvas(
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .height(140.dp),
     ) {
-      WidgetLabel(instance.configuration.text("label", displayName))
-      Canvas(
-        modifier =
-          Modifier
-            .fillMaxWidth()
-            .height(140.dp),
-      ) {
-        val radius = min(size.width, size.height) / 2f * 0.82f
-        val center = Offset(size.width / 2f, size.height / 2f)
-        drawCircle(
-          color = Color(0xFF374151),
-          radius = radius,
-          center = center,
-          style = Stroke(width = 3.dp.toPx()),
+      val radius = min(size.width, size.height) / 2f * 0.82f
+      val center = Offset(size.width / 2f, size.height / 2f)
+      drawCircle(
+        color = Color(0xFF374151),
+        radius = radius,
+        center = center,
+        style = Stroke(width = 3.dp.toPx()),
+      )
+
+      repeat(12) { index ->
+        val angle = index * 30f
+        val outer = center.pointAt(radius, angle)
+        val inner = center.pointAt(radius * 0.88f, angle)
+        drawLine(
+          color = Color(0xFF9CA3AF),
+          start = inner,
+          end = outer,
+          strokeWidth = 2.dp.toPx(),
+          cap = StrokeCap.Round,
         )
-
-        repeat(12) { index ->
-          val angle = index * 30f
-          val outer = center.pointAt(radius, angle)
-          val inner = center.pointAt(radius * 0.88f, angle)
-          drawLine(
-            color = Color(0xFF9CA3AF),
-            start = inner,
-            end = outer,
-            strokeWidth = 2.dp.toPx(),
-            cap = StrokeCap.Round,
-          )
-        }
-
-        val hourAngle = ((now.hour % 12) + now.minute / 60f) * 30f
-        val minuteAngle = (now.minute + now.second / 60f) * 6f
-        val secondAngle = now.second * 6f
-        drawHand(center, radius * 0.46f, hourAngle, Color.White, 5.dp.toPx())
-        drawHand(center, radius * 0.68f, minuteAngle, Color.White, 3.dp.toPx())
-        drawHand(center, radius * 0.74f, secondAngle, Color(0xFF9CA3AF), 1.5.dp.toPx())
-        drawCircle(color = Color.White, radius = 4.dp.toPx(), center = center)
       }
+
+      val hourAngle = ((now.hour % 12) + now.minute / 60f) * 30f
+      val minuteAngle = (now.minute + now.second / 60f) * 6f
+      val secondAngle = now.second * 6f
+      drawHand(center, radius * 0.46f, hourAngle, Color.White, 5.dp.toPx())
+      drawHand(center, radius * 0.68f, minuteAngle, Color.White, 3.dp.toPx())
+      drawHand(center, radius * 0.74f, secondAngle, Color(0xFF9CA3AF), 1.5.dp.toPx())
+      drawCircle(color = Color.White, radius = 4.dp.toPx(), center = center)
     }
   }
 }

@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -90,7 +89,7 @@ class DigitalClockWidget : AmbientWidget {
     var now by remember { mutableStateOf(LocalTime.now()) }
     var today by remember { mutableStateOf(LocalDate.now()) }
 
-    LaunchedEffect(showSeconds) {
+    StartedWidgetEffect(showSeconds) {
       while (true) {
         now = LocalTime.now()
         today = LocalDate.now()
@@ -110,6 +109,27 @@ class DigitalClockWidget : AmbientWidget {
         use24Hour = use24Hour,
         showSeconds = showSeconds,
         fillSpace = fillSpace,
+        modifier = Modifier
+          .fillMaxWidth()
+          .weight(1f),
+      )
+    }
+  }
+
+  @Composable
+  override fun PreviewContent(instance: WidgetInstance, modifier: Modifier) {
+    Column(
+      modifier = modifier.fillMaxSize(),
+      verticalArrangement = Arrangement.Center,
+    ) {
+      WidgetLabel(instance.configuration.text("label", displayName))
+      DigitalClockFace(
+        now = LocalTime.of(9, 41),
+        today = LocalDate.of(2026, 8, 15),
+        style = DigitalClockStyle.fromValue(instance.configuration.text("style", "classic")),
+        use24Hour = instance.configuration.text("use24Hour", "true").toBoolean(),
+        showSeconds = instance.configuration.text("showSeconds", "false").toBoolean(),
+        fillSpace = instance.configuration.text("fillSpace", "false").toBoolean(),
         modifier = Modifier
           .fillMaxWidth()
           .weight(1f),

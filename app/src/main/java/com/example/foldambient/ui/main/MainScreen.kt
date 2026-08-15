@@ -824,7 +824,7 @@ private fun WidgetTemplatePreview(
     )
     Spacer(modifier = Modifier.height(8.dp))
     if (widget != null) {
-      widget.Content(
+      widget.PreviewContent(
         instance = template.previewInstance,
         modifier = Modifier.fillMaxSize(),
       )

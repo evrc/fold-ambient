@@ -38,13 +38,35 @@ class DummyTextWidget : AmbientWidget {
 
   @Composable
   override fun Content(instance: WidgetInstance, modifier: Modifier) {
-    Column(
-      modifier = modifier.fillMaxSize(),
-      verticalArrangement = Arrangement.Center,
-    ) {
-      WidgetLabel(instance.configuration.text("label", displayName))
-      WidgetValue(instance.configuration.text("value", "Ready"))
-    }
+    DummyTextContent(
+      label = instance.configuration.text("label", displayName),
+      value = instance.configuration.text("value", "Ready"),
+      modifier = modifier,
+    )
+  }
+
+  @Composable
+  override fun PreviewContent(instance: WidgetInstance, modifier: Modifier) {
+    DummyTextContent(
+      label = instance.configuration.text("label", displayName),
+      value = instance.configuration.text("value", "Ready"),
+      modifier = modifier,
+    )
+  }
+}
+
+@Composable
+private fun DummyTextContent(
+  label: String,
+  value: String,
+  modifier: Modifier,
+) {
+  Column(
+    modifier = modifier.fillMaxSize(),
+    verticalArrangement = Arrangement.Center,
+  ) {
+    WidgetLabel(label)
+    WidgetValue(value)
   }
 }
 
@@ -124,11 +146,8 @@ fun defaultAmbientWidgetRegistry() =
           displayName = "Empty",
           widgetType = "empty",
         ),
-        widgetTemplate(
-          id = "android.appwidget",
-          displayName = "Phone Widget",
-          widgetType = "android.appwidget",
-        ),
+        // Third-party AppWidgets stay registered for future work, but are not exposed in v1
+        // until the complete bind, configure, and delete lifecycle is implemented.
         widgetTemplate(
           id = "media.playback",
           displayName = "Media",

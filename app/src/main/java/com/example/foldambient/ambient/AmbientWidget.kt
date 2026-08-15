@@ -27,6 +27,9 @@ interface AmbientWidget {
 
   @Composable
   fun Content(instance: WidgetInstance, modifier: Modifier)
+
+  @Composable
+  fun PreviewContent(instance: WidgetInstance, modifier: Modifier)
 }
 
 data class WidgetConfigurationSpec(

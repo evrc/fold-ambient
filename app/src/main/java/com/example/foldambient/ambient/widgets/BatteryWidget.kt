@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,21 +42,43 @@ class BatteryWidget : AmbientWidget {
     val context = LocalContext.current
     var batteryState by remember { mutableStateOf(context.readBatteryState()) }
 
-    LaunchedEffect(context) {
+    StartedWidgetEffect(context) {
       while (true) {
         batteryState = context.readBatteryState()
         delay(30_000L)
       }
     }
 
-    Column(
-      modifier = modifier.fillMaxSize(),
-      verticalArrangement = Arrangement.Center,
-    ) {
-      WidgetLabel(instance.configuration.text("label", displayName))
-      WidgetValue(batteryState.levelText)
-      WidgetLabel(batteryState.statusText)
-    }
+    BatteryWidgetContent(
+      label = instance.configuration.text("label", displayName),
+      batteryState = batteryState,
+      modifier = modifier,
+    )
+  }
+
+  @Composable
+  override fun PreviewContent(instance: WidgetInstance, modifier: Modifier) {
+    BatteryWidgetContent(
+      label = instance.configuration.text("label", displayName),
+      batteryState = BatteryState(levelText = "82%", statusText = "Charging"),
+      modifier = modifier,
+    )
+  }
+}
+
+@Composable
+private fun BatteryWidgetContent(
+  label: String,
+  batteryState: BatteryState,
+  modifier: Modifier,
+) {
+  Column(
+    modifier = modifier.fillMaxSize(),
+    verticalArrangement = Arrangement.Center,
+  ) {
+    WidgetLabel(label)
+    WidgetValue(batteryState.levelText)
+    WidgetLabel(batteryState.statusText)
   }
 }
 

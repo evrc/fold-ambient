@@ -11,6 +11,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.foldambient.ambient.AmbientWidget
 import com.example.foldambient.ambient.WidgetConfigurationField
 import com.example.foldambient.ambient.WidgetConfigurationFieldType
@@ -36,6 +39,7 @@ class AndroidAppWidgetWidget : AmbientWidget {
   @Composable
   override fun Content(instance: WidgetInstance, modifier: Modifier) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val appWidgetId = instance.configuration.text(AppWidgetIdKey, "").toIntOrNull()
 
     if (appWidgetId == null) {
@@ -60,9 +64,21 @@ class AndroidAppWidgetWidget : AmbientWidget {
       AppWidgetHost(context.applicationContext, FoldAmbientAppWidgetHostId)
     }
 
-    DisposableEffect(host) {
-      runCatching { host.startListening() }
+    DisposableEffect(host, lifecycleOwner) {
+      val observer =
+        LifecycleEventObserver { _, event ->
+          when (event) {
+            Lifecycle.Event.ON_START -> runCatching { host.startListening() }
+            Lifecycle.Event.ON_STOP -> runCatching { host.stopListening() }
+            else -> Unit
+          }
+        }
+      lifecycleOwner.lifecycle.addObserver(observer)
+      if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+        runCatching { host.startListening() }
+      }
       onDispose {
+        lifecycleOwner.lifecycle.removeObserver(observer)
         runCatching { host.stopListening() }
       }
     }
@@ -73,6 +89,11 @@ class AndroidAppWidgetWidget : AmbientWidget {
       },
       modifier = modifier.fillMaxSize(),
     )
+  }
+
+  @Composable
+  override fun PreviewContent(instance: WidgetInstance, modifier: Modifier) {
+    AndroidAppWidgetPlaceholder(modifier = modifier)
   }
 }
 

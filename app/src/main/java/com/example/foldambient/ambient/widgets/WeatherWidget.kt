@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,6 +33,7 @@ import com.example.foldambient.weather.PhoneWeatherLocationResult
 import com.example.foldambient.weather.WeatherLocationMode
 import com.example.foldambient.weather.WeatherLocation
 import com.example.foldambient.weather.WeatherTemperatureUnit
+import com.example.foldambient.weather.WeatherCondition
 import kotlinx.coroutines.delay
 
 class WeatherWidget : AmbientWidget {
@@ -85,7 +85,7 @@ class WeatherWidget : AmbientWidget {
       mutableStateOf(manualLocation)
     }
 
-    LaunchedEffect(repository, phoneLocationProvider, locationMode, manualLocation, temperatureUnit) {
+    StartedWidgetEffect(repository, phoneLocationProvider, locationMode, manualLocation, temperatureUnit) {
       while (true) {
         val location =
           when (locationMode) {
@@ -126,6 +126,36 @@ class WeatherWidget : AmbientWidget {
       label = instance.configuration.text("label", displayName),
       location = displayedLocation,
       result = result,
+      modifier = modifier,
+    )
+  }
+
+  @Composable
+  override fun PreviewContent(instance: WidgetInstance, modifier: Modifier) {
+    val unit = instance.configuration.weatherTemperatureUnit()
+    val locationName = instance.configuration.text("locationName", "New York")
+    WeatherWidgetContent(
+      label = instance.configuration.text("label", displayName),
+      location =
+        WeatherLocation(
+          name = locationName,
+          latitude = 40.7128,
+          longitude = -74.0060,
+          temperatureUnit = unit,
+        ),
+      result =
+        AmbientWeatherResult.Available(
+          AmbientWeather(
+            locationName = locationName,
+            temperature = if (unit == WeatherTemperatureUnit.Fahrenheit) 72.0 else 22.0,
+            apparentTemperature = null,
+            temperatureUnit = unit,
+            condition = WeatherCondition(code = 1, isDay = true, label = "Partly cloudy"),
+            windSpeed = 6.0,
+            windSpeedUnit = "mph",
+            observedAt = null,
+          ),
+        ),
       modifier = modifier,
     )
   }

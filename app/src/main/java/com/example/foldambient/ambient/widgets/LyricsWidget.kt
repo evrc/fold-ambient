@@ -35,6 +35,7 @@ import com.example.foldambient.ambient.WidgetInstance
 import com.example.foldambient.lyrics.AmbientLyricLine
 import com.example.foldambient.lyrics.AmbientLyrics
 import com.example.foldambient.lyrics.AmbientLyricsLookupResult
+import com.example.foldambient.lyrics.AmbientLyricsSource
 import com.example.foldambient.lyrics.LrcLibLyricsRepository
 import com.example.foldambient.lyrics.LyricsTrackQuery
 import com.example.foldambient.media.AmbientMediaSnapshot
@@ -58,14 +59,14 @@ class LyricsWidget : AmbientWidget {
     var lookupResult by remember { mutableStateOf<AmbientLyricsLookupResult?>(null) }
     val query = LyricsTrackQuery.from(snapshot)
 
-    LaunchedEffect(mediaRepository) {
+    StartedWidgetEffect(mediaRepository) {
       while (true) {
         snapshot = mediaRepository.snapshot()
         delay(if (snapshot.playbackStatus == AmbientPlaybackStatus.Playing) 500L else 1_500L)
       }
     }
 
-    LaunchedEffect(query?.cacheKey) {
+    StartedWidgetEffect(query?.cacheKey, lyricsRepository) {
       lookupResult = null
       if (query != null) {
         lookupResult = lyricsRepository.lyricsFor(query)
@@ -82,7 +83,46 @@ class LyricsWidget : AmbientWidget {
       modifier = modifier,
     )
   }
+
+  @Composable
+  override fun PreviewContent(instance: WidgetInstance, modifier: Modifier) {
+    LyricsWidgetContent(
+      snapshot = PreviewLyricsMediaSnapshot,
+      lookupResult = PreviewLyricsResult,
+      onOpenNotificationSettings = {},
+      onSeekTo = {},
+      modifier = modifier,
+    )
+  }
 }
+
+private val PreviewLyricsMediaSnapshot =
+  AmbientMediaSnapshot(
+    isNotificationListenerEnabled = true,
+    packageName = "com.example.music",
+    title = "Night Drive",
+    artist = "Fold Ambient",
+    playbackStatus = AmbientPlaybackStatus.Playing,
+    positionMillis = 74_000L,
+    durationMillis = 214_000L,
+  )
+
+private val PreviewLyricsResult =
+  AmbientLyricsLookupResult.Found(
+    AmbientLyrics(
+      trackName = "Night Drive",
+      artistName = "Fold Ambient",
+      albumName = "Desk Mode",
+      durationMillis = 214_000L,
+      source = AmbientLyricsSource.Synced,
+      lines =
+        listOf(
+          AmbientLyricLine(startMillis = 65_000L, text = "city lights soften"),
+          AmbientLyricLine(startMillis = 74_000L, text = "the night keeps time"),
+          AmbientLyricLine(startMillis = 83_000L, text = "and everything settles"),
+        ),
+    ),
+  )
 
 @Composable
 private fun LyricsWidgetContent(

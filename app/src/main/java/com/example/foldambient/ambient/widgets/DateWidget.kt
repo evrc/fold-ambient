@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,19 +45,45 @@ class DateWidget : AmbientWidget {
     val showYear = instance.configuration.text("showYear", "false").toBoolean()
     var today by remember { mutableStateOf(LocalDate.now()) }
 
-    LaunchedEffect(Unit) {
+    StartedWidgetEffect(Unit) {
       while (true) {
         today = LocalDate.now()
         delay(60_000L)
       }
     }
 
-    Column(
-      modifier = modifier.fillMaxSize(),
-      verticalArrangement = Arrangement.Center,
-    ) {
-      WidgetLabel(instance.configuration.text("label", today.format(DateTimeFormatter.ofPattern("EEEE"))))
-      WidgetValue(today.format(DateTimeFormatter.ofPattern(if (showYear) "MMM d, yyyy" else "MMM d")))
-    }
+    DateWidgetContent(
+      label = instance.configuration.text("label", today.format(DateTimeFormatter.ofPattern("EEEE"))),
+      today = today,
+      showYear = showYear,
+      modifier = modifier,
+    )
+  }
+
+  @Composable
+  override fun PreviewContent(instance: WidgetInstance, modifier: Modifier) {
+    val previewDate = LocalDate.of(2026, 8, 15)
+    DateWidgetContent(
+      label = instance.configuration.text("label", previewDate.format(DateTimeFormatter.ofPattern("EEEE"))),
+      today = previewDate,
+      showYear = instance.configuration.text("showYear", "false").toBoolean(),
+      modifier = modifier,
+    )
+  }
+}
+
+@Composable
+private fun DateWidgetContent(
+  label: String,
+  today: LocalDate,
+  showYear: Boolean,
+  modifier: Modifier,
+) {
+  Column(
+    modifier = modifier.fillMaxSize(),
+    verticalArrangement = Arrangement.Center,
+  ) {
+    WidgetLabel(label)
+    WidgetValue(today.format(DateTimeFormatter.ofPattern(if (showYear) "MMM d, yyyy" else "MMM d")))
   }
 }

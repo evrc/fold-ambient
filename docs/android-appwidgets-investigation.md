@@ -18,6 +18,8 @@ Current implementation:
 - does not request `BIND_APPWIDGET`;
 - does not yet allocate, bind, configure, or delete Android app widget IDs.
 
+v1 stabilization intentionally keeps this implementation out of the user-facing widget picker until the full allocation, binding, configuration, and cleanup flow is implemented.
+
 Future picker/binding work must handle:
 
 - allocating a persistent app widget ID with `AppWidgetHost.allocateAppWidgetId()`;
