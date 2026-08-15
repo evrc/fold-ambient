@@ -10,15 +10,19 @@ object DefaultAmbientPages {
           layout = AmbientLayoutKind.Duo,
           widgets =
             listOf(
-              dummyTextWidget(
-                id = "status",
-                label = "Fold Ambient",
-                value = "Ready",
-              ),
-              dummyTextWidget(
+              widget(
                 id = "clock",
-                label = "Clock",
-                value = "12:00",
+                widgetType = "clock.digital",
+                values =
+                  mapOf(
+                    "label" to "Clock",
+                    "use24Hour" to "true",
+                  ),
+              ),
+              widget(
+                id = "analog",
+                widgetType = "clock.analog",
+                values = mapOf("label" to "Clock"),
               ),
             ),
         ),
@@ -28,15 +32,14 @@ object DefaultAmbientPages {
           layout = AmbientLayoutKind.Duo,
           widgets =
             listOf(
-              dummyTextWidget(
+              widget(
                 id = "date",
-                label = "Today",
-                value = "Monday",
+                widgetType = "date.today",
               ),
-              dummyTextWidget(
+              widget(
                 id = "battery",
-                label = "Battery",
-                value = "100%",
+                widgetType = "battery.status",
+                values = mapOf("label" to "Battery"),
               ),
             ),
         ),
@@ -46,15 +49,23 @@ object DefaultAmbientPages {
           layout = AmbientLayoutKind.Duo,
           widgets =
             listOf(
-              dummyTextWidget(
+              widget(
                 id = "focus",
-                label = "Focus",
-                value = "Calm",
+                widgetType = "dummy.text",
+                values =
+                  mapOf(
+                    "label" to "Focus",
+                    "value" to "Calm",
+                  ),
               ),
-              dummyTextWidget(
+              widget(
                 id = "space",
-                label = "Widget",
-                value = "Empty",
+                widgetType = "dummy.text",
+                values =
+                  mapOf(
+                    "label" to "Text",
+                    "value" to "Ready",
+                  ),
               ),
             ),
         ),
@@ -67,20 +78,13 @@ object DefaultAmbientPages {
   }
 }
 
-private fun dummyTextWidget(
+private fun widget(
   id: String,
-  label: String,
-  value: String,
+  widgetType: String,
+  values: Map<String, String> = emptyMap(),
 ): WidgetInstance =
   WidgetInstance(
     id = id,
-    widgetType = "dummy.text",
-    configuration =
-      WidgetConfiguration(
-        values =
-          mapOf(
-            "label" to label,
-            "value" to value,
-          ),
-      ),
+    widgetType = widgetType,
+    configuration = WidgetConfiguration(values = values),
   )

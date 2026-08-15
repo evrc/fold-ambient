@@ -3,14 +3,11 @@ package com.example.foldambient.ambient.widgets
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import com.example.foldambient.ambient.AmbientWidget
 import com.example.foldambient.ambient.AmbientWidgetRegistry
 import com.example.foldambient.ambient.AmbientWidgetTemplate
-import com.example.foldambient.ambient.AmbientWidget
 import com.example.foldambient.ambient.WidgetConfiguration
 import com.example.foldambient.ambient.WidgetInstance
 
@@ -24,68 +21,74 @@ class DummyTextWidget : AmbientWidget {
       modifier = modifier.fillMaxSize(),
       verticalArrangement = Arrangement.Center,
     ) {
-      Text(
-        text = instance.configuration.text("label", displayName),
-        color = Color(0xFF9CA3AF),
-        style = MaterialTheme.typography.titleMedium,
-      )
-      Text(
-        text = instance.configuration.text("value", "Ready"),
-        color = Color.White,
-        style = MaterialTheme.typography.displaySmall,
-      )
+      WidgetLabel(instance.configuration.text("label", displayName))
+      WidgetValue(instance.configuration.text("value", "Ready"))
     }
   }
 }
 
 fun defaultAmbientWidgetRegistry() =
   AmbientWidgetRegistry(
-    widgets = listOf(DummyTextWidget()),
+    widgets =
+      listOf(
+        DigitalClockWidget(),
+        AnalogClockWidget(),
+        DateWidget(),
+        BatteryWidget(),
+        DummyTextWidget(),
+      ),
     templates =
       listOf(
-        dummyTextTemplate(
-          id = "status",
-          displayName = "Status",
-          label = "Fold Ambient",
-          value = "Ready",
+        widgetTemplate(
+          id = "clock.digital",
+          displayName = "Digital Clock",
+          widgetType = "clock.digital",
+          values =
+            mapOf(
+              "label" to "Clock",
+              "use24Hour" to "true",
+              "showSeconds" to "false",
+            ),
         ),
-        dummyTextTemplate(
-          id = "clock",
-          displayName = "Clock",
-          label = "Clock",
-          value = "12:00",
+        widgetTemplate(
+          id = "clock.analog",
+          displayName = "Analog Clock",
+          widgetType = "clock.analog",
+          values = mapOf("label" to "Clock"),
         ),
-        dummyTextTemplate(
+        widgetTemplate(
           id = "date",
           displayName = "Date",
-          label = "Today",
-          value = "Monday",
+          widgetType = "date.today",
         ),
-        dummyTextTemplate(
+        widgetTemplate(
           id = "battery",
           displayName = "Battery",
-          label = "Battery",
-          value = "100%",
+          widgetType = "battery.status",
+          values = mapOf("label" to "Battery"),
+        ),
+        widgetTemplate(
+          id = "text.simple",
+          displayName = "Simple Text",
+          widgetType = "dummy.text",
+          values =
+            mapOf(
+              "label" to "Text",
+              "value" to "Ready",
+            ),
         ),
       ),
   )
 
-private fun dummyTextTemplate(
+private fun widgetTemplate(
   id: String,
   displayName: String,
-  label: String,
-  value: String,
+  widgetType: String,
+  values: Map<String, String> = emptyMap(),
 ) =
   AmbientWidgetTemplate(
-    id = "dummy.$id",
+    id = id,
     displayName = displayName,
-    widgetType = "dummy.text",
-    configuration =
-      WidgetConfiguration(
-        values =
-          mapOf(
-            "label" to label,
-            "value" to value,
-          ),
-      ),
+    widgetType = widgetType,
+    configuration = WidgetConfiguration(values = values),
   )

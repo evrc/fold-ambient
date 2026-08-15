@@ -153,7 +153,7 @@ The initial page/navigation pass adds a horizontally swipable page deck, three s
 
 ---
 
-# Phase 6 — First built-in widgets
+# Phase 6 — First built-in widgets — Completed
 
 Implement several simple widgets before media integration.
 
@@ -197,6 +197,8 @@ Useful both as a test widget and as a genuinely customizable dashboard element.
 Introduces asynchronous/network-backed state.
 
 The goal is not merely to add features. These widgets should validate that widgets with very different state models can all fit the same framework cleanly.
+
+The initial built-in widget pass adds digital clock, analog clock, date, battery, and simple text widgets. Weather remains deferred until networking and provider choices are intentionally introduced.
 
 ---
 
@@ -523,4 +525,4 @@ Current foundation:
 - command-line / VS Code development;
 - successful debug build.
 
-**Current active work:** Phase 6 — First built-in widgets.
+**Current active work:** Phase 7 — Widget customization.
