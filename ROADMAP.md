@@ -427,7 +427,7 @@ The initial OLED/desk-display pass keeps the existing true-black ambient surface
 
 ---
 
-# Phase 14 — Visual polish
+# Phase 14 — Visual polish — Completed
 
 Once the architecture and functionality are stable, make Fold Ambient feel purpose-built rather than like a developer utility.
 
@@ -446,6 +446,8 @@ Potential work:
 - night-friendly visuals.
 
 The application may take visual and interaction inspiration from existing StandBy applications, particularly Zetabit's app, but should use its own visual identity, assets and implementation.
+
+The initial visual polish pass gives Fold Ambient a stable night-friendly theme, tighter typography, smoother cyclic page transitions, cleaner edit-only picker/configuration surfaces, and subtly rounded media artwork while keeping ambient widgets borderless.
 
 ---
 
@@ -539,4 +541,4 @@ Current foundation:
 - command-line / VS Code development;
 - successful debug build.
 
-**Current active work:** Phase 14 — Visual polish.
+**Current active work:** Phase 15 — Settings and persistence.

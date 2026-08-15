@@ -43,6 +43,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -360,6 +361,12 @@ private fun AmbientDashboard(
             modifier = Modifier.fillMaxSize(),
           ) { virtualPageIndex ->
             val page = pageDeck.pages[realPageIndex(virtualPageIndex, realPageCount)]
+            val pageOffset =
+              abs(
+                (pagerState.currentPage - virtualPageIndex) +
+                  pagerState.currentPageOffsetFraction,
+              ).coerceIn(0f, 1f)
+            val pageScale = 0.965f + ((1f - pageOffset) * 0.035f)
             AmbientPageRenderer(
               page = page,
               widgetRegistry = widgetRegistry,
@@ -383,7 +390,14 @@ private fun AmbientDashboard(
                   onPageDeckChange(pageDeck.copy(selectedPageId = page.id))
                 }
               },
-              modifier = Modifier.fillMaxSize(),
+              modifier =
+                Modifier
+                  .fillMaxSize()
+                  .graphicsLayer {
+                    alpha = 0.72f + ((1f - pageOffset) * 0.28f)
+                    scaleX = pageScale
+                    scaleY = pageScale
+                  },
             )
           }
         }
@@ -623,6 +637,7 @@ private fun WidgetTemplatePreview(
   Column(
     modifier = Modifier
       .size(width = 180.dp, height = 150.dp)
+      .background(Color(0xFF0A0D10), RoundedCornerShape(8.dp))
       .border(1.dp, Color(0xFF374151), RoundedCornerShape(8.dp))
       .clickable(onClick = onClick)
       .padding(14.dp),
@@ -652,6 +667,7 @@ private fun WidgetConfigurationPanel(
   Column(
     modifier = Modifier
       .fillMaxWidth()
+      .background(Color(0xFF0A0D10), RoundedCornerShape(8.dp))
       .border(1.dp, Color(0xFF374151), RoundedCornerShape(8.dp))
       .padding(14.dp),
     verticalArrangement = Arrangement.spacedBy(12.dp),
