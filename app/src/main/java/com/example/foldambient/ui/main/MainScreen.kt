@@ -1,17 +1,14 @@
 package com.example.foldambient.ui.main
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -23,16 +20,25 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.example.foldambient.ambient.AmbientPageDeck
+import com.example.foldambient.ambient.AmbientWidgetRegistry
+import com.example.foldambient.ambient.DefaultAmbientPages
+import com.example.foldambient.ambient.ui.AmbientPageRenderer
+import com.example.foldambient.ambient.widgets.defaultAmbientWidgetRegistry
 import com.example.foldambient.theme.FoldAmbientTheme
 
 @Composable
 fun MainScreen(
   isAmbientActive: Boolean,
+  pageDeck: AmbientPageDeck,
+  widgetRegistry: AmbientWidgetRegistry,
   onAmbientActiveChange: (Boolean) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   if (isAmbientActive) {
     AmbientDashboard(
+      pageDeck = pageDeck,
+      widgetRegistry = widgetRegistry,
       onExit = { onAmbientActiveChange(false) },
       modifier = modifier,
     )
@@ -78,6 +84,8 @@ private fun EntryShell(
 
 @Composable
 private fun AmbientDashboard(
+  pageDeck: AmbientPageDeck,
+  widgetRegistry: AmbientWidgetRegistry,
   onExit: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -94,6 +102,8 @@ private fun AmbientDashboard(
     ) {
       AmbientContent(
         windowClass = windowClass,
+        pageDeck = pageDeck,
+        widgetRegistry = widgetRegistry,
         modifier = Modifier
           .weight(1f)
           .fillMaxWidth(),
@@ -108,60 +118,16 @@ private fun AmbientDashboard(
 @Composable
 private fun AmbientContent(
   windowClass: AmbientWindowClass,
+  pageDeck: AmbientPageDeck,
+  widgetRegistry: AmbientWidgetRegistry,
   modifier: Modifier = Modifier,
 ) {
-  if (windowClass == AmbientWindowClass.WideCoverLandscape) {
-    Row(
+  pageDeck.selectedPage?.let { selectedPage ->
+    AmbientPageRenderer(
+      page = selectedPage,
+      widgetRegistry = widgetRegistry,
+      preferDuo = windowClass == AmbientWindowClass.WideCoverLandscape,
       modifier = modifier,
-      horizontalArrangement = Arrangement.spacedBy(18.dp),
-    ) {
-      AmbientPane(
-        title = "Fold Ambient",
-        value = "Ready",
-        modifier = Modifier.weight(1f),
-      )
-      AmbientPane(
-        title = "Page",
-        value = "1",
-        modifier = Modifier.weight(1f),
-      )
-    }
-  } else {
-    Column(
-      modifier = modifier,
-      verticalArrangement = Arrangement.Center,
-    ) {
-      AmbientPane(
-        title = "Fold Ambient",
-        value = "Ready",
-        modifier = Modifier.fillMaxWidth(),
-      )
-    }
-  }
-}
-
-@Composable
-private fun AmbientPane(
-  title: String,
-  value: String,
-  modifier: Modifier = Modifier,
-) {
-  Column(
-    modifier = modifier
-      .fillMaxSize()
-      .border(1.dp, Color(0xFF1F2937), RoundedCornerShape(8.dp))
-      .padding(28.dp),
-    verticalArrangement = Arrangement.Center,
-  ) {
-    Text(
-      text = title,
-      color = Muted,
-      style = MaterialTheme.typography.titleMedium,
-    )
-    Text(
-      text = value,
-      color = Color.White,
-      style = MaterialTheme.typography.displaySmall,
     )
   }
 }
@@ -185,6 +151,8 @@ fun MainScreenPreview() {
   FoldAmbientTheme {
     MainScreen(
       isAmbientActive = false,
+      pageDeck = previewPageDeck,
+      widgetRegistry = previewWidgetRegistry,
       onAmbientActiveChange = {},
     )
   }
@@ -194,7 +162,11 @@ fun MainScreenPreview() {
 @Composable
 fun AmbientDashboardCoverPreview() {
   FoldAmbientTheme {
-    AmbientDashboard(onExit = {})
+    AmbientDashboard(
+      pageDeck = previewPageDeck,
+      widgetRegistry = previewWidgetRegistry,
+      onExit = {},
+    )
   }
 }
 
@@ -202,9 +174,15 @@ fun AmbientDashboardCoverPreview() {
 @Composable
 fun AmbientDashboardStandardPreview() {
   FoldAmbientTheme {
-    AmbientDashboard(onExit = {})
+    AmbientDashboard(
+      pageDeck = previewPageDeck,
+      widgetRegistry = previewWidgetRegistry,
+      onExit = {},
+    )
   }
 }
 
 private val Night = Color(0xFF05070A)
 private val Muted = Color(0xFF9CA3AF)
+private val previewPageDeck = DefaultAmbientPages.createDeck()
+private val previewWidgetRegistry = defaultAmbientWidgetRegistry()

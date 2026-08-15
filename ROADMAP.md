@@ -62,7 +62,7 @@ The initial shell provides manual entry into a fullscreen ambient dashboard, kee
 
 ---
 
-# Phase 3 — Widget and page engine
+# Phase 3 — Widget and page engine — Completed
 
 This is the architectural foundation of Fold Ambient.
 
@@ -97,6 +97,8 @@ or later:
 without the Duo layout knowing anything about either widget type.
 
 Start with **dummy widgets** rather than real features so the framework itself can be tested first.
+
+The initial engine introduces page, layout, widget instance, widget configuration, widget appearance, registry, renderer, and persistent page deck concepts. It currently renders a persisted default Duo page with dummy widgets.
 
 ---
 
@@ -517,4 +519,4 @@ Current foundation:
 - command-line / VS Code development;
 - successful debug build.
 
-**Current active work:** Phase 3 — Widget and page engine.
+**Current active work:** Phase 4 — Widget editing experience.

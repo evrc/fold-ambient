@@ -12,9 +12,12 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.example.foldambient.ambient.SharedPreferencesAmbientPageRepository
+import com.example.foldambient.ambient.widgets.defaultAmbientWidgetRegistry
 import com.example.foldambient.theme.FoldAmbientTheme
 import com.example.foldambient.ui.main.MainScreen
 
@@ -27,6 +30,11 @@ class MainActivity : ComponentActivity() {
     enableEdgeToEdge()
     setContent {
       var isAmbientActive by rememberSaveable { mutableStateOf(false) }
+      val pageDeck =
+        remember {
+          SharedPreferencesAmbientPageRepository(applicationContext).loadDeck()
+        }
+      val widgetRegistry = remember { defaultAmbientWidgetRegistry() }
 
       LaunchedEffect(isAmbientActive) {
         setAmbientWindowMode(isAmbientActive)
@@ -38,6 +46,8 @@ class MainActivity : ComponentActivity() {
       FoldAmbientTheme {
         MainScreen(
           isAmbientActive = isAmbientActive,
+          pageDeck = pageDeck,
+          widgetRegistry = widgetRegistry,
           onAmbientActiveChange = { isAmbientActive = it },
           modifier = Modifier.fillMaxSize(),
         )
