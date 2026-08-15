@@ -31,7 +31,7 @@ fun AmbientPageRenderer(
   onSlotClick: (Int) -> Unit = {},
   modifier: Modifier = Modifier,
 ) {
-  val layout = if (preferDuo) page.layout else AmbientLayoutKind.Full
+  val layout = page.layout
   when (layout) {
     AmbientLayoutKind.Full ->
       FullLayout(
@@ -47,6 +47,16 @@ fun AmbientPageRenderer(
     AmbientLayoutKind.Duo ->
       DuoLayout(
         widgets = page.widgets.take(AmbientLayoutKind.Duo.slotCount),
+        widgetRegistry = widgetRegistry,
+        isEditing = isEditing,
+        selectedSlotIndex = selectedSlotIndex,
+        onSlotLongPress = onSlotLongPress,
+        onSlotClick = onSlotClick,
+        modifier = modifier,
+      )
+    AmbientLayoutKind.Quad ->
+      QuadLayout(
+        widgets = page.widgets.take(AmbientLayoutKind.Quad.slotCount),
         widgetRegistry = widgetRegistry,
         isEditing = isEditing,
         selectedSlotIndex = selectedSlotIndex,
@@ -105,6 +115,43 @@ private fun DuoLayout(
         onSlotClick = onSlotClick,
         modifier = Modifier.weight(1f),
       )
+    }
+  }
+}
+
+@Composable
+private fun QuadLayout(
+  widgets: List<WidgetInstance>,
+  widgetRegistry: AmbientWidgetRegistry,
+  isEditing: Boolean,
+  selectedSlotIndex: Int?,
+  onSlotLongPress: (Int) -> Unit,
+  onSlotClick: (Int) -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  Column(
+    modifier = modifier,
+    verticalArrangement = Arrangement.spacedBy(18.dp),
+  ) {
+    repeat(2) { rowIndex ->
+      Row(
+        modifier = Modifier.weight(1f),
+        horizontalArrangement = Arrangement.spacedBy(18.dp),
+      ) {
+        repeat(2) { columnIndex ->
+          val slotIndex = rowIndex * 2 + columnIndex
+          WidgetSlot(
+            widget = widgets.getOrNull(slotIndex),
+            widgetRegistry = widgetRegistry,
+            isEditing = isEditing,
+            isSelected = selectedSlotIndex == slotIndex,
+            slotIndex = slotIndex,
+            onSlotLongPress = onSlotLongPress,
+            onSlotClick = onSlotClick,
+            modifier = Modifier.weight(1f),
+          )
+        }
+      }
     }
   }
 }

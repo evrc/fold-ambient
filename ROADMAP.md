@@ -227,7 +227,7 @@ The initial customization pass lets widgets expose compact text and boolean conf
 
 ---
 
-# Phase 8 — Layout expansion
+# Phase 8 — Layout expansion — Completed
 
 Once Duo is stable, introduce additional layouts.
 
@@ -261,6 +261,8 @@ Once Duo is stable, introduce additional layouts.
 ```
 
 More flexible/resizable layouts can be considered later if the simpler model becomes limiting.
+
+The initial layout expansion adds Full, Duo, and Quad as explicit page layouts. Edit mode can switch the selected page between them, resizing widget slots while keeping layout persistence in the page deck model.
 
 ---
 
@@ -527,4 +529,4 @@ Current foundation:
 - command-line / VS Code development;
 - successful debug build.
 
-**Current active work:** Phase 8 — Layout expansion.
+**Current active work:** Phase 9 — Android third-party widgets.

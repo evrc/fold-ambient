@@ -46,7 +46,7 @@ object DefaultAmbientPages {
         AmbientPage(
           id = "focus",
           title = "Focus",
-          layout = AmbientLayoutKind.Duo,
+          layout = AmbientLayoutKind.Quad,
           widgets =
             listOf(
               widget(
@@ -57,6 +57,16 @@ object DefaultAmbientPages {
                     "label" to "Focus",
                     "value" to "Calm",
                   ),
+              ),
+              widget(
+                id = "focus-date",
+                widgetType = "date.today",
+                values = mapOf("label" to "Today"),
+              ),
+              widget(
+                id = "focus-battery",
+                widgetType = "battery.status",
+                values = mapOf("label" to "Battery"),
               ),
               widget(
                 id = "space",

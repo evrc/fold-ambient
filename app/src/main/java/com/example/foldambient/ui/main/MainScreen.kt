@@ -246,7 +246,8 @@ private fun AmbientDashboard(
         PageEditorBar(
           pageTitle = selectedPage.title,
           pageCount = pageDeck.pages.size,
-          canSwapWidgets = preferDuo && selectedPage.layout == AmbientLayoutKind.Duo,
+          selectedLayout = selectedPage.layout,
+          canSwapWidgets = selectedPage.layout == AmbientLayoutKind.Duo,
           canConfigureWidget = canConfigureSelectedWidget,
           canMovePageLeft = selectedPageIndex > 0,
           canMovePageRight = selectedPageIndex < pageDeck.pages.lastIndex,
@@ -263,6 +264,12 @@ private fun AmbientDashboard(
           onConfigureWidget = {
             isPickerOpen = false
             isConfigurationOpen = !isConfigurationOpen
+          },
+          onLayoutSelected = { layout ->
+            onPageDeckChange(pageDeck.updateSelectedPageLayout(layout))
+            selectedSlotIndex = selectedSlotIndex.coerceAtMost(layout.slotCount - 1)
+            isPickerOpen = false
+            isConfigurationOpen = false
           },
           onMovePageLeft = {
             onPageDeckChange(pageDeck.moveSelectedPageBy(-1))
@@ -344,6 +351,7 @@ private fun PageIndicator(
 private fun PageEditorBar(
   pageTitle: String,
   pageCount: Int,
+  selectedLayout: AmbientLayoutKind,
   canSwapWidgets: Boolean,
   canConfigureWidget: Boolean,
   canMovePageLeft: Boolean,
@@ -352,6 +360,7 @@ private fun PageEditorBar(
   onSwapWidgets: () -> Unit,
   onAddPage: () -> Unit,
   onConfigureWidget: () -> Unit,
+  onLayoutSelected: (AmbientLayoutKind) -> Unit,
   onMovePageLeft: () -> Unit,
   onMovePageRight: () -> Unit,
   onDeletePage: () -> Unit,
@@ -408,6 +417,19 @@ private fun PageEditorBar(
       }
       TextButton(onClick = onExit) {
         Text("Exit", color = Muted)
+      }
+    }
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .horizontalScroll(rememberScrollState()),
+      horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+      AmbientLayoutKind.entries.forEach { layout ->
+        val isSelected = layout == selectedLayout
+        TextButton(onClick = { onLayoutSelected(layout) }) {
+          Text(layout.name, color = if (isSelected) Color.White else Muted)
+        }
       }
     }
   }
@@ -553,6 +575,18 @@ private fun AmbientPageDeck.updateSelectedWidgetConfiguration(
     )
   }
 
+private fun AmbientPageDeck.updateSelectedPageLayout(layout: AmbientLayoutKind): AmbientPageDeck =
+  updateSelectedPage { page ->
+    if (page.layout == layout) {
+      page
+    } else {
+      page.copy(
+        layout = layout,
+        widgets = page.resizedWidgets(layout.slotCount),
+      )
+    }
+  }
+
 private fun AmbientPageDeck.swapSelectedPageSlots(slotIndex: Int): AmbientPageDeck =
   updateSelectedPage { page ->
     val otherSlotIndex = if (slotIndex == 0) 1 else 0
@@ -640,6 +674,11 @@ private fun realPageIndex(virtualPageIndex: Int, realPageCount: Int): Int {
 private fun AmbientPage.slotWidgets(): MutableList<WidgetInstance?> =
   MutableList(layout.slotCount) { index -> widgets.getOrNull(index) }
 
+private fun AmbientPage.resizedWidgets(slotCount: Int): List<WidgetInstance> =
+  List(slotCount) { index ->
+    widgets.getOrNull(index) ?: createEmptyWidget(label = "Slot ${index + 1}")
+  }
+
 private fun AmbientWidgetTemplate.toWidgetInstance(): WidgetInstance =
   WidgetInstance(
     id = UUID.randomUUID().toString(),
@@ -655,30 +694,25 @@ private fun createBlankPage(pageNumber: Int): AmbientPage =
     layout = AmbientLayoutKind.Duo,
     widgets =
       listOf(
-        WidgetInstance(
-          id = UUID.randomUUID().toString(),
-          widgetType = "dummy.text",
-          configuration =
-            WidgetConfiguration(
-              values =
-                mapOf(
-                  "label" to "Page $pageNumber",
-                  "value" to "Ready",
-                ),
-            ),
-        ),
-        WidgetInstance(
-          id = UUID.randomUUID().toString(),
-          widgetType = "dummy.text",
-          configuration =
-            WidgetConfiguration(
-              values =
-                mapOf(
-                  "label" to "Widget",
-                  "value" to "Empty",
-                ),
-            ),
-        ),
+        createEmptyWidget(label = "Page $pageNumber", value = "Ready"),
+        createEmptyWidget(label = "Widget"),
+      ),
+  )
+
+private fun createEmptyWidget(
+  label: String,
+  value: String = "Empty",
+): WidgetInstance =
+  WidgetInstance(
+    id = UUID.randomUUID().toString(),
+    widgetType = "dummy.text",
+    configuration =
+      WidgetConfiguration(
+        values =
+          mapOf(
+            "label" to label,
+            "value" to value,
+          ),
       ),
   )
 

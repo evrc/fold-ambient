@@ -18,6 +18,7 @@ data class AmbientPage(
 enum class AmbientLayoutKind(val slotCount: Int) {
   Full(slotCount = 1),
   Duo(slotCount = 2),
+  Quad(slotCount = 4),
 }
 
 data class WidgetInstance(
