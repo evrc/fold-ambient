@@ -16,8 +16,9 @@ class SharedPreferencesAmbientPageRepository(
       return DefaultAmbientPages.createDeck().also(::saveDeck)
     }
 
-    return runCatching { decodeDeck(storedDeck) }
-      .getOrElse { DefaultAmbientPages.createDeck().also(::saveDeck) }
+    return runCatching { decodeDeck(storedDeck).normalized() }
+      .getOrElse { DefaultAmbientPages.createDeck() }
+      .also(::saveDeck)
   }
 
   fun saveDeck(deck: AmbientPageDeck) {
@@ -92,6 +93,23 @@ class SharedPreferencesAmbientPageRepository(
 }
 
 private const val KEY_DECK_JSON = "deck_json"
+
+private fun AmbientPageDeck.normalized(): AmbientPageDeck {
+  val defaultDeck = DefaultAmbientPages.createDeck()
+  val normalizedPages =
+    when {
+      pages.isEmpty() -> defaultDeck.pages
+      pages.size == 1 -> pages + defaultDeck.pages.drop(1)
+      else -> pages
+    }
+  val normalizedSelectedPageId =
+    if (normalizedPages.any { it.id == selectedPageId }) selectedPageId else normalizedPages.first().id
+
+  return copy(
+    pages = normalizedPages,
+    selectedPageId = normalizedSelectedPageId,
+  )
+}
 
 private fun <T> JSONArray.mapObjects(transform: (JSONObject) -> T): List<T> =
   List(length()) { index -> transform(getJSONObject(index)) }

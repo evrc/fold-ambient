@@ -123,7 +123,7 @@ The initial editing pass supports long-press entry into edit mode, selectable wi
 
 ---
 
-# Phase 5 — Pages and navigation
+# Phase 5 — Pages and navigation — Completed
 
 Allow multiple ambient pages.
 
@@ -148,6 +148,8 @@ Persist:
 - active/default page.
 
 Editing should eventually support adding, deleting and reordering pages.
+
+The initial page/navigation pass adds a horizontally swipable page deck, three seeded dummy pages, persisted active/default page selection, and edit-mode controls for adding, deleting, and moving pages.
 
 ---
 
@@ -521,4 +523,4 @@ Current foundation:
 - command-line / VS Code development;
 - successful debug build.
 
-**Current active work:** Phase 5 — Pages and navigation.
+**Current active work:** Phase 6 — First built-in widgets.
