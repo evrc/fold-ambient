@@ -24,7 +24,6 @@ import com.example.foldambient.ambient.widgets.LocalWidgetLabelsVisible
 fun AmbientPageRenderer(
   page: AmbientPage,
   widgetRegistry: AmbientWidgetRegistry,
-  preferDuo: Boolean,
   isEditing: Boolean = false,
   selectedSlotIndex: Int? = null,
   onSlotLongPress: (Int) -> Unit = {},

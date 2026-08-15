@@ -30,6 +30,14 @@ interface AmbientWidget {
 
   @Composable
   fun PreviewContent(instance: WidgetInstance, modifier: Modifier)
+
+  @Composable
+  fun ConfigurationField(
+    instance: WidgetInstance,
+    field: WidgetConfigurationField,
+    onFieldChange: (WidgetConfigurationField, String) -> Unit,
+    onValuesChange: (Map<String, String>) -> Unit,
+  ): Boolean = false
 }
 
 data class WidgetConfigurationSpec(

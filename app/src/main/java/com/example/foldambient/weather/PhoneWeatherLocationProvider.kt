@@ -8,6 +8,7 @@ import android.location.Location
 import android.location.LocationManager
 import android.os.CancellationSignal
 import kotlinx.coroutines.suspendCancellableCoroutine
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.resume
 
 class PhoneWeatherLocationProvider(
@@ -48,26 +49,48 @@ private suspend fun LocationManager.currentLocation(
 ): PhoneWeatherLocationResult =
   suspendCancellableCoroutine { continuation ->
     val cancellationSignal = CancellationSignal()
+    val completion = CallbackCompletionGate { cancellationSignal.cancel() }
+    continuation.invokeOnCancellation { completion.cancel() }
+
     runCatching {
       getCurrentLocation(
         provider,
         cancellationSignal,
         { command -> command.run() },
       ) { location ->
-        continuation.resume(
+        val result =
           (location ?: fallback)
             ?.let(PhoneWeatherLocationResult::Available)
-            ?: PhoneWeatherLocationResult.Unavailable("Location unavailable"),
-        )
+            ?: PhoneWeatherLocationResult.Unavailable("Location unavailable")
+        if (completion.tryComplete()) {
+          continuation.resume(result)
+        }
       }
     }.onFailure { error ->
-      continuation.resume(
+      val result =
         fallback?.let(PhoneWeatherLocationResult::Available)
-          ?: PhoneWeatherLocationResult.Unavailable(error.message ?: "Location unavailable"),
-      )
+          ?: PhoneWeatherLocationResult.Unavailable(error.message ?: "Location unavailable")
+      if (completion.tryComplete()) {
+        continuation.resume(result)
+      }
     }
-    continuation.invokeOnCancellation { cancellationSignal.cancel() }
   }
+
+internal class CallbackCompletionGate(
+  private val onCancel: () -> Unit = {},
+) {
+  private val completed = AtomicBoolean(false)
+
+  fun tryComplete(): Boolean = completed.compareAndSet(false, true)
+
+  fun cancel(): Boolean {
+    val didCancel = completed.compareAndSet(false, true)
+    if (didCancel) {
+      onCancel()
+    }
+    return didCancel
+  }
+}
 
 @SuppressLint("MissingPermission")
 private fun LocationManager.latestKnownLocation(): Location? =

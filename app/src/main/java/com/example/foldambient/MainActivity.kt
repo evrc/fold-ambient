@@ -1,6 +1,8 @@
 package com.example.foldambient
 
 import android.os.Bundle
+import android.os.SystemClock
+import android.util.Log
 import android.view.Surface
 import android.view.WindowInsets
 import android.view.WindowInsetsController
@@ -19,9 +21,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.example.foldambient.activation.AmbientActivationCommand
 import com.example.foldambient.activation.AmbientActivationMonitor
 import com.example.foldambient.activation.AmbientActivationPolicy
 import com.example.foldambient.activation.AmbientActivationSignals
+import com.example.foldambient.activation.AmbientActivationStateMachine
+import com.example.foldambient.activation.AmbientActivationTransition
 import com.example.foldambient.activation.SharedPreferencesAmbientActivationSettingsRepository
 import com.example.foldambient.ambient.SharedPreferencesAmbientPageRepository
 import com.example.foldambient.ambient.widgets.defaultAmbientWidgetRegistry
@@ -52,10 +60,19 @@ class MainActivity : ComponentActivity() {
     enableEdgeToEdge()
     setContent {
       var isAmbientActive by rememberSaveable { mutableStateOf(false) }
-      var isAutomaticAmbientSession by rememberSaveable { mutableStateOf(false) }
-      var isAutoActivationPaused by rememberSaveable { mutableStateOf(false) }
       var isAmbientIdle by remember { mutableStateOf(false) }
       val userInteractionTick by userInteractionTickState
+      val lifecycleOwner = LocalLifecycleOwner.current
+      var isLifecycleStarted by remember {
+        mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED))
+      }
+      val activationStateMachine =
+        remember {
+          AmbientActivationStateMachine { message ->
+            Log.d(ACTIVATION_LOG_TAG, message)
+          }
+        }
+      var activationSnapshot by remember { mutableStateOf(activationStateMachine.snapshot) }
       val pageRepository =
         remember {
           SharedPreferencesAmbientPageRepository(applicationContext)
@@ -79,6 +96,66 @@ class MainActivity : ComponentActivity() {
         )
       val widgetRegistry = remember { defaultAmbientWidgetRegistry(mediaRepository) }
 
+      fun applyActivationTransition(transition: AmbientActivationTransition) {
+        activationSnapshot = transition.snapshot
+        when (transition.command) {
+          AmbientActivationCommand.ActivateAmbient -> {
+            isAmbientActive = true
+          }
+          AmbientActivationCommand.DeactivateAmbient -> {
+            isAmbientActive = false
+          }
+          null -> Unit
+        }
+      }
+
+      DisposableEffect(lifecycleOwner, activationStateMachine) {
+        val observer =
+          LifecycleEventObserver { _, event ->
+            when (event) {
+              Lifecycle.Event.ON_START -> {
+                isLifecycleStarted = true
+              }
+              Lifecycle.Event.ON_STOP -> {
+                isLifecycleStarted = false
+                applyActivationTransition(activationStateMachine.onLifecycleStopped())
+              }
+              else -> Unit
+            }
+          }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+          lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+      }
+      LaunchedEffect(
+        activationEvaluation.shouldActivate,
+        isLifecycleStarted,
+        activationStateMachine,
+      ) {
+        if (isLifecycleStarted) {
+          applyActivationTransition(
+            activationStateMachine.onRawEligibilityChanged(
+              eligible = activationEvaluation.shouldActivate,
+              nowMillis = SystemClock.elapsedRealtime(),
+            ),
+          )
+        }
+      }
+      LaunchedEffect(
+        activationSnapshot.timerDeadlineMillis,
+        isLifecycleStarted,
+        activationStateMachine,
+      ) {
+        val deadlineMillis = activationSnapshot.timerDeadlineMillis
+        if (isLifecycleStarted && deadlineMillis != null) {
+          val delayMillis = (deadlineMillis - SystemClock.elapsedRealtime()).coerceAtLeast(0L)
+          delay(delayMillis)
+          applyActivationTransition(
+            activationStateMachine.onTimer(nowMillis = SystemClock.elapsedRealtime()),
+          )
+        }
+      }
       LaunchedEffect(isAmbientActive, userInteractionTick, displaySettings.idleDelayMillis) {
         isAmbientIdle = false
         if (isAmbientActive) {
@@ -92,23 +169,6 @@ class MainActivity : ComponentActivity() {
           isAmbientActive = isAmbientActive,
           isIdle = isAmbientIdle,
         )
-      }
-      LaunchedEffect(
-        activationEvaluation.shouldActivate,
-        isAmbientActive,
-        isAutomaticAmbientSession,
-        isAutoActivationPaused,
-      ) {
-        if (!activationEvaluation.shouldActivate) {
-          isAutoActivationPaused = false
-          if (isAmbientActive && isAutomaticAmbientSession) {
-            isAutomaticAmbientSession = false
-            isAmbientActive = false
-          }
-        } else if (!isAmbientActive && !isAutoActivationPaused) {
-          isAutomaticAmbientSession = true
-          isAmbientActive = true
-        }
       }
       DisposableEffect(Unit) {
         onDispose {
@@ -155,14 +215,12 @@ class MainActivity : ComponentActivity() {
             },
             onAmbientActiveChange = { shouldBeActive ->
               if (shouldBeActive) {
-                isAutomaticAmbientSession = false
-                isAutoActivationPaused = false
+                applyActivationTransition(activationStateMachine.onManualEntered())
                 isAmbientActive = true
               } else {
-                if (isAutomaticAmbientSession && activationEvaluation.shouldActivate) {
-                  isAutoActivationPaused = true
-                }
-                isAutomaticAmbientSession = false
+                applyActivationTransition(
+                  activationStateMachine.onManualExited(nowMillis = SystemClock.elapsedRealtime()),
+                )
                 isAmbientActive = false
               }
             },
@@ -232,3 +290,5 @@ class MainActivity : ComponentActivity() {
     }
   }
 }
+
+private const val ACTIVATION_LOG_TAG = "FoldAmbientActivation"

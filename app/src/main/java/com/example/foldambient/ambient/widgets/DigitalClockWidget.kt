@@ -204,9 +204,10 @@ private fun ClassicClock(
   }
 
   val timeText = now.format(clockFormatter(use24Hour = use24Hour, showSeconds = showSeconds))
+  val sampleText = clockSampleText(use24Hour = use24Hour, showSeconds = showSeconds)
   BoxWithConstraints(modifier = modifier.fillMaxSize()) {
     val textStyle = fittedTextStyle(
-      text = timeText,
+      text = sampleText,
       maxWidth = maxWidth,
       maxHeight = maxHeight,
       fontWeight = FontWeight.Black,
@@ -238,9 +239,9 @@ private fun StandByClock(
     val fittedSize =
       if (fillSpace) {
         fittedStandByFontSize(
-          timeText = "${parts.hour}:${parts.minute}",
-          sideText = today.format(DateFormatter).uppercase(),
-          secondaryText = parts.secondaryText,
+          timeText = StandByTimeSample,
+          sideText = StandByDateSample,
+          secondaryText = clockSecondarySample(use24Hour = use24Hour, showSeconds = showSeconds),
           maxWidth = maxWidth,
           maxHeight = maxHeight,
         )
@@ -306,7 +307,7 @@ private fun StackedClock(
     val numberSize =
       if (fillSpace) {
         fittedStackedFontSize(
-          parts = parts,
+          parts = clockSampleParts(use24Hour = use24Hour, showSeconds = showSeconds),
           maxWidth = maxWidth,
           maxHeight = maxHeight,
         ).sp
@@ -363,7 +364,7 @@ private fun SplitClock(
       val numberSize =
         if (fillSpace) {
           fittedSplitFontSize(
-            parts = parts,
+            parts = clockSampleParts(use24Hour = use24Hour, showSeconds = showSeconds),
             maxWidth = maxWidth,
             maxHeight = maxHeight,
           )
@@ -415,23 +416,26 @@ private fun fittedTextStyle(
   fontWeight: FontWeight,
 ): TextStyle {
   val measurer = rememberTextMeasurer()
+  val density = LocalDensity.current
   val fontSize =
-    fittedFontSize(maxWidth = maxWidth, maxHeight = maxHeight) { candidate ->
-      val layout =
-        measurer.measure(
-          text = AnnotatedString(text),
-          style =
-            TextStyle(
-              fontSize = candidate.sp,
-              lineHeight = candidate.sp,
-              fontWeight = fontWeight,
-            ),
-          maxLines = 1,
+    remember(text, maxWidth, maxHeight, fontWeight, density) {
+      fittedFontSize(maxWidth = maxWidth, maxHeight = maxHeight, density = density) { candidate ->
+        val layout =
+          measurer.measure(
+            text = AnnotatedString(text),
+            style =
+              TextStyle(
+                fontSize = candidate.sp,
+                lineHeight = candidate.sp,
+                fontWeight = fontWeight,
+              ),
+            maxLines = 1,
+          )
+        ClockBounds(
+          width = layout.size.width.toFloat(),
+          height = layout.size.height.toFloat(),
         )
-      ClockBounds(
-        width = layout.size.width.toFloat(),
-        height = layout.size.height.toFloat(),
-      )
+      }
     }
   return TextStyle(
     fontSize = fontSize.sp,
@@ -449,20 +453,23 @@ private fun fittedStandByFontSize(
   maxHeight: Dp,
 ): Float {
   val measurer = rememberTextMeasurer()
-  return fittedFontSize(maxWidth = maxWidth, maxHeight = maxHeight) { candidate ->
-    val main = measurer.measureClockText(timeText, candidate, FontWeight.Black)
-    val sideSize = candidate * 0.16f
-    val sideOne = measurer.measureClockText(sideText, sideSize, FontWeight.SemiBold)
-    val sideTwo =
-      if (secondaryText.isBlank()) {
-        ClockBounds(width = 0f, height = 0f)
-      } else {
-        measurer.measureClockText(secondaryText, sideSize, FontWeight.Medium)
-      }
-    ClockBounds(
-      width = main.width + (candidate * 0.12f) + maxOf(sideOne.width, sideTwo.width),
-      height = maxOf(main.height, sideOne.height + sideTwo.height),
-    )
+  val density = LocalDensity.current
+  return remember(timeText, sideText, secondaryText, maxWidth, maxHeight, density) {
+    fittedFontSize(maxWidth = maxWidth, maxHeight = maxHeight, density = density) { candidate ->
+      val main = measurer.measureClockText(timeText, candidate, FontWeight.Black)
+      val sideSize = candidate * 0.16f
+      val sideOne = measurer.measureClockText(sideText, sideSize, FontWeight.SemiBold)
+      val sideTwo =
+        if (secondaryText.isBlank()) {
+          ClockBounds(width = 0f, height = 0f)
+        } else {
+          measurer.measureClockText(secondaryText, sideSize, FontWeight.Medium)
+        }
+      ClockBounds(
+        width = main.width + (candidate * 0.12f) + maxOf(sideOne.width, sideTwo.width),
+        height = maxOf(main.height, sideOne.height + sideTwo.height),
+      )
+    }
   }
 }
 
@@ -473,19 +480,22 @@ private fun fittedStackedFontSize(
   maxHeight: Dp,
 ): Float {
   val measurer = rememberTextMeasurer()
-  return fittedFontSize(maxWidth = maxWidth, maxHeight = maxHeight) { candidate ->
-    val hour = measurer.measureClockText(parts.hour, candidate, FontWeight.Black)
-    val minute = measurer.measureClockText(parts.minute, candidate, FontWeight.Black)
-    val secondary =
-      if (parts.secondaryText.isBlank()) {
-        ClockBounds(width = 0f, height = 0f)
-      } else {
-        measurer.measureClockText(parts.secondaryText, candidate * 0.18f, FontWeight.Medium)
-      }
-    ClockBounds(
-      width = maxOf(hour.width, minute.width, secondary.width),
-      height = hour.height + minute.height + secondary.height,
-    )
+  val density = LocalDensity.current
+  return remember(parts, maxWidth, maxHeight, density) {
+    fittedFontSize(maxWidth = maxWidth, maxHeight = maxHeight, density = density) { candidate ->
+      val hour = measurer.measureClockText(parts.hour, candidate, FontWeight.Black)
+      val minute = measurer.measureClockText(parts.minute, candidate, FontWeight.Black)
+      val secondary =
+        if (parts.secondaryText.isBlank()) {
+          ClockBounds(width = 0f, height = 0f)
+        } else {
+          measurer.measureClockText(parts.secondaryText, candidate * 0.18f, FontWeight.Medium)
+        }
+      ClockBounds(
+        width = maxOf(hour.width, minute.width, secondary.width),
+        height = hour.height + minute.height + secondary.height,
+      )
+    }
   }
 }
 
@@ -496,23 +506,25 @@ private fun fittedSplitFontSize(
   maxHeight: Dp,
 ): Float {
   val measurer = rememberTextMeasurer()
-  return fittedFontSize(maxWidth = maxWidth, maxHeight = maxHeight) { candidate ->
-    val hour = measurer.measureClockText(parts.hour, candidate, FontWeight.Black)
-    val minute = measurer.measureClockText(parts.minute, candidate, FontWeight.Black)
-    ClockBounds(
-      width = hour.width + minute.width,
-      height = maxOf(hour.height, minute.height),
-    )
+  val density = LocalDensity.current
+  return remember(parts, maxWidth, maxHeight, density) {
+    fittedFontSize(maxWidth = maxWidth, maxHeight = maxHeight, density = density) { candidate ->
+      val hour = measurer.measureClockText(parts.hour, candidate, FontWeight.Black)
+      val minute = measurer.measureClockText(parts.minute, candidate, FontWeight.Black)
+      ClockBounds(
+        width = hour.width + minute.width,
+        height = maxOf(hour.height, minute.height),
+      )
+    }
   }
 }
 
-@Composable
 private fun fittedFontSize(
   maxWidth: Dp,
   maxHeight: Dp,
+  density: androidx.compose.ui.unit.Density,
   measure: (Float) -> ClockBounds,
 ): Float {
-  val density = LocalDensity.current
   val maxWidthPx = with(density) { maxWidth.toPx() }.coerceAtLeast(1f)
   val maxHeightPx = with(density) { maxHeight.toPx() }.coerceAtLeast(1f)
   var low = 6f
@@ -564,6 +576,28 @@ private fun clockFormatter(use24Hour: Boolean, showSeconds: Boolean): DateTimeFo
     },
   )
 
+private fun clockSampleText(use24Hour: Boolean, showSeconds: Boolean): String =
+  when {
+    use24Hour && showSeconds -> "88:88:88"
+    use24Hour -> "88:88"
+    showSeconds -> "88:88:88 PM"
+    else -> "88:88 PM"
+  }
+
+private fun clockSecondarySample(use24Hour: Boolean, showSeconds: Boolean): String =
+  when {
+    showSeconds -> "88"
+    use24Hour -> ""
+    else -> "PM"
+  }
+
+private fun clockSampleParts(use24Hour: Boolean, showSeconds: Boolean): ClockParts =
+  ClockParts(
+    hour = "88",
+    minute = "88",
+    secondaryText = clockSecondarySample(use24Hour = use24Hour, showSeconds = showSeconds),
+  )
+
 private fun LocalTime.clockParts(use24Hour: Boolean, showSeconds: Boolean): ClockParts {
   val hourValue = if (use24Hour) hour else ((hour + 11) % 12) + 1
   return ClockParts(
@@ -606,6 +640,8 @@ private enum class DigitalClockStyle(
 }
 
 private val DateFormatter = DateTimeFormatter.ofPattern("EEE d")
+private const val StandByTimeSample = "88:88"
+private const val StandByDateSample = "WED 30"
 private val StandByGreen = Color(0xFF8DDC8B)
 private val Cyan = Color(0xFF22D3EE)
 private val Blue = Color(0xFF60A5FA)

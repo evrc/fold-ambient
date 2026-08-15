@@ -1,11 +1,4 @@
 package com.example.foldambient.ui.main
-
-import android.Manifest
-import android.content.Context
-import android.content.pm.PackageManager
-import android.location.Location
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -46,7 +39,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -62,6 +54,7 @@ import com.example.foldambient.activation.AmbientActivationSignals
 import com.example.foldambient.activation.normalized
 import com.example.foldambient.ambient.AmbientLayoutKind
 import com.example.foldambient.ambient.AmbientPageDeck
+import com.example.foldambient.ambient.AmbientWidget
 import com.example.foldambient.ambient.AmbientWidgetRegistry
 import com.example.foldambient.ambient.AmbientWidgetTemplate
 import com.example.foldambient.ambient.DefaultAmbientPages
@@ -82,14 +75,8 @@ import com.example.foldambient.ambient.widgets.defaultAmbientWidgetRegistry
 import com.example.foldambient.display.AmbientDisplaySettings
 import com.example.foldambient.display.normalized
 import com.example.foldambient.theme.FoldAmbientTheme
-import com.example.foldambient.weather.OpenMeteoGeocodingRepository
-import com.example.foldambient.weather.PhoneWeatherLocationProvider
-import com.example.foldambient.weather.PhoneWeatherLocationResult
-import com.example.foldambient.weather.WeatherLocationMode
-import com.example.foldambient.weather.WeatherLocationSearchResult
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -485,8 +472,6 @@ private fun AmbientDashboard(
       .background(Color.Black)
       .padding(18.dp),
   ) {
-    val windowClass = ambientWindowClass(maxWidth, maxHeight)
-    val preferDuo = windowClass == AmbientWindowClass.WideCoverLandscape
     val selectedPage = pageDeck.selectedPage
     val selectedWidget = selectedPage?.slotWidgets()?.getOrNull(selectedSlotIndex)
     val selectedWidgetRenderer = selectedWidget?.let(widgetRegistry::widgetFor)
@@ -539,7 +524,6 @@ private fun AmbientDashboard(
             AmbientPageRenderer(
               page = page,
               widgetRegistry = widgetRegistry,
-              preferDuo = preferDuo,
               isEditing = isEditing && page.id == selectedPage?.id,
               selectedSlotIndex = selectedSlotIndex,
               onSlotLongPress = { slotIndex ->
@@ -653,6 +637,7 @@ private fun AmbientDashboard(
           if (isConfigurationOpen && selectedWidget != null && selectedWidgetRenderer != null) {
             WidgetConfigurationPanel(
               widget = selectedWidget,
+              widgetRenderer = selectedWidgetRenderer,
               widgetName = selectedWidgetRenderer.displayName,
               fields = selectedWidgetRenderer.configurationSpec.fields,
               onFieldChange = { field, value ->
@@ -841,6 +826,7 @@ private fun WidgetTemplatePreview(
 @Composable
 private fun WidgetConfigurationPanel(
   widget: WidgetInstance,
+  widgetRenderer: AmbientWidget,
   widgetName: String,
   fields: List<WidgetConfigurationField>,
   onFieldChange: (WidgetConfigurationField, String) -> Unit,
@@ -860,214 +846,50 @@ private fun WidgetConfigurationPanel(
       style = MaterialTheme.typography.titleSmall,
     )
     fields.forEach { field ->
-      when (field.type) {
-        WidgetConfigurationFieldType.Text ->
-          TextField(
-            value = widget.configuration.text(field.key, field.defaultValue),
-            onValueChange = { value -> onFieldChange(field, value) },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            label = { Text(field.label) },
-          )
-        WidgetConfigurationFieldType.Option ->
-          OptionField(
-            field = field,
-            selectedValue = widget.configuration.text(field.key, field.defaultValue),
-            onFieldChange = onFieldChange,
-          )
-        WidgetConfigurationFieldType.Location ->
-          LocationField(
-            widget = widget,
-            field = field,
-            onValuesChange = onValuesChange,
-          )
-        WidgetConfigurationFieldType.Boolean ->
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-          ) {
-            Text(
-              text = field.label,
-              color = Color.White,
-              style = MaterialTheme.typography.bodyLarge,
-            )
-            Switch(
-              checked = widget.configuration.text(field.key, field.defaultValue).toBoolean(),
-              onCheckedChange = { checked -> onFieldChange(field, checked.toString()) },
-            )
-          }
-      }
-    }
-  }
-}
-
-@Composable
-private fun LocationField(
-  widget: WidgetInstance,
-  field: WidgetConfigurationField,
-  onValuesChange: (Map<String, String>) -> Unit,
-) {
-  val context = androidx.compose.ui.platform.LocalContext.current
-  val coroutineScope = rememberCoroutineScope()
-  val phoneLocationProvider =
-    remember(context) { PhoneWeatherLocationProvider(context.applicationContext) }
-  val geocodingRepository = remember { OpenMeteoGeocodingRepository() }
-  val locationMode =
-    WeatherLocationMode.fromValue(
-      widget.configuration.text("locationMode", WeatherLocationMode.Manual.value),
-    )
-  var query by remember(widget.id) {
-    mutableStateOf(widget.configuration.text("locationName", field.defaultValue))
-  }
-  var searchResults by remember { mutableStateOf(emptyList<WeatherLocationSearchResult>()) }
-  var searchStatus by remember { mutableStateOf<String?>(null) }
-  var phoneStatus by remember { mutableStateOf<String?>(null) }
-
-  fun savePhoneLocation(location: Location) {
-    onValuesChange(
-      mapOf(
-        "locationMode" to WeatherLocationMode.Phone.value,
-        "locationName" to "Current location",
-        "latitude" to location.latitude.toString(),
-        "longitude" to location.longitude.toString(),
-      ),
-    )
-  }
-
-  fun resolvePhoneLocation() {
-    coroutineScope.launch {
-      phoneStatus = "Locating"
-      when (val result = phoneLocationProvider.currentLocation()) {
-        is PhoneWeatherLocationResult.Available -> {
-          savePhoneLocation(result.location)
-          phoneStatus = null
-        }
-        PhoneWeatherLocationResult.MissingPermission -> {
-          phoneStatus = "Location permission needed"
-        }
-        is PhoneWeatherLocationResult.Unavailable -> {
-          phoneStatus = result.reason
-        }
-      }
-    }
-  }
-
-  val locationPermissionLauncher =
-    rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-      if (granted) {
-        resolvePhoneLocation()
-      } else {
-        phoneStatus = "Location denied"
-        onValuesChange(mapOf("locationMode" to WeatherLocationMode.Manual.value))
-      }
-    }
-
-  LaunchedEffect(query, locationMode) {
-    if (locationMode != WeatherLocationMode.Manual) return@LaunchedEffect
-    val trimmedQuery = query.trim()
-    if (trimmedQuery.length < 2) {
-      searchResults = emptyList()
-      searchStatus = null
-      return@LaunchedEffect
-    }
-
-    searchStatus = "Searching"
-    delay(LocationSearchDebounceMillis)
-    searchResults = geocodingRepository.searchLocations(trimmedQuery)
-    searchStatus = if (searchResults.isEmpty()) "No matches" else null
-  }
-
-  Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-    Text(
-      text = field.label,
-      color = Color.White,
-      style = MaterialTheme.typography.bodyLarge,
-    )
-    Row(
-      modifier = Modifier.fillMaxWidth(),
-      horizontalArrangement = Arrangement.SpaceBetween,
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      Text(
-        text = "Use phone location",
-        color = if (locationMode == WeatherLocationMode.Phone) Color.White else Muted,
-        style = MaterialTheme.typography.bodyMedium,
-      )
-      Switch(
-        checked = locationMode == WeatherLocationMode.Phone,
-        onCheckedChange = { usePhoneLocation ->
-          if (usePhoneLocation) {
-            onValuesChange(
-              mapOf(
-                "locationMode" to WeatherLocationMode.Phone.value,
-                "locationName" to "Current location",
-              ),
-            )
-            if (context.hasCoarseLocationPermission()) {
-              resolvePhoneLocation()
-            } else {
-              locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
-            }
-          } else {
-            phoneStatus = null
-            onValuesChange(mapOf("locationMode" to WeatherLocationMode.Manual.value))
-          }
-        },
-      )
-    }
-
-    phoneStatus?.let { status ->
-      Text(
-        text = status,
-        color = Muted,
-        style = MaterialTheme.typography.labelLarge,
-      )
-    }
-
-    if (locationMode == WeatherLocationMode.Manual) {
-      TextField(
-        value = query,
-        onValueChange = { value -> query = value },
-        modifier = Modifier.fillMaxWidth(),
-        singleLine = true,
-        label = { Text("Search city") },
-      )
-      searchStatus?.let { status ->
-        Text(
-          text = status,
-          color = Muted,
-          style = MaterialTheme.typography.labelLarge,
+      val isRenderedByWidget =
+        widgetRenderer.ConfigurationField(
+          instance = widget,
+          field = field,
+          onFieldChange = onFieldChange,
+          onValuesChange = onValuesChange,
         )
-      }
-      searchResults.forEach { result ->
-        TextButton(
-          onClick = {
-            query = result.displayName
-            searchResults = emptyList()
-            searchStatus = null
-            onValuesChange(
-              mapOf(
-                "locationMode" to WeatherLocationMode.Manual.value,
-                "locationName" to result.displayName,
-                "latitude" to result.latitude.toString(),
-                "longitude" to result.longitude.toString(),
-              ),
+
+      if (!isRenderedByWidget) {
+        when (field.type) {
+          WidgetConfigurationFieldType.Text,
+          WidgetConfigurationFieldType.Location,
+          ->
+            TextField(
+              value = widget.configuration.text(field.key, field.defaultValue),
+              onValueChange = { value -> onFieldChange(field, value) },
+              modifier = Modifier.fillMaxWidth(),
+              singleLine = true,
+              label = { Text(field.label) },
             )
-          },
-        ) {
-          Text(
-            text = result.displayName,
-            color = Color.White,
-          )
+          WidgetConfigurationFieldType.Option ->
+            OptionField(
+              field = field,
+              selectedValue = widget.configuration.text(field.key, field.defaultValue),
+              onFieldChange = onFieldChange,
+            )
+          WidgetConfigurationFieldType.Boolean ->
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically,
+            ) {
+              Text(
+                text = field.label,
+                color = Color.White,
+                style = MaterialTheme.typography.bodyLarge,
+              )
+              Switch(
+                checked = widget.configuration.text(field.key, field.defaultValue).toBoolean(),
+                onCheckedChange = { checked -> onFieldChange(field, checked.toString()) },
+              )
+            }
         }
       }
-    } else {
-      Text(
-        text = widget.configuration.text("locationName", "Current location"),
-        color = Muted,
-        style = MaterialTheme.typography.labelLarge,
-      )
     }
   }
 }
@@ -1131,9 +953,6 @@ private fun realPageIndex(virtualPageIndex: Int, realPageCount: Int): Int {
   return ((virtualPageIndex % realPageCount) + realPageCount) % realPageCount
 }
 
-private fun ambientWindowClass(width: Dp, height: Dp): AmbientWindowClass =
-  if (width > height * 1.8f) AmbientWindowClass.WideCoverLandscape else AmbientWindowClass.Standard
-
 private fun activationStatusText(
   signals: AmbientActivationSignals,
   evaluation: AmbientActivationEvaluation,
@@ -1154,14 +973,6 @@ private fun Float.roundToTenth(): String =
 private fun Float.toPercent(): Int = (this * 100f).roundToInt()
 
 private fun Long.toSeconds(): Long = this / 1_000L
-
-private fun Context.hasCoarseLocationPermission(): Boolean =
-  checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-
-private enum class AmbientWindowClass {
-  Standard,
-  WideCoverLandscape,
-}
 
 @Composable
 private fun SectionSpacer() {
@@ -1216,7 +1027,6 @@ private val Night = Color(0xFF05070A)
 private val Muted = Color(0xFF9CA3AF)
 private const val CyclicPagerPageCount = 10_000
 private const val PageIndicatorHideDelayMillis = 1_200L
-private const val LocationSearchDebounceMillis = 350L
 private data class PixelShiftStep(val x: Dp, val y: Dp)
 private val PixelShiftOrigin = PixelShiftStep(x = 0.dp, y = 0.dp)
 private val PixelShiftSteps =

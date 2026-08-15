@@ -1,5 +1,6 @@
 package com.example.foldambient.weather
 
+import com.example.foldambient.cache.BoundedLruCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -9,7 +10,8 @@ import java.net.URL
 import java.net.URLEncoder
 
 class OpenMeteoGeocodingRepository : WeatherGeocodingRepository {
-  private val cachedResults = mutableMapOf<String, List<WeatherLocationSearchResult>>()
+  private val cachedResults =
+    BoundedLruCache<String, List<WeatherLocationSearchResult>>(GeocodingSearchCacheCapacity)
 
   override suspend fun searchLocations(query: String): List<WeatherLocationSearchResult> =
     withContext(Dispatchers.IO) {
@@ -88,3 +90,4 @@ private fun String.urlEncode(): String = URLEncoder.encode(this, Charsets.UTF_8.
 private const val BaseUrl = "https://geocoding-api.open-meteo.com"
 private const val UserAgent = "FoldAmbient/1.0 (https://example.com/foldambient)"
 private const val MinimumSearchLength = 2
+private const val GeocodingSearchCacheCapacity = 24

@@ -159,6 +159,22 @@ class WeatherWidget : AmbientWidget {
       modifier = modifier,
     )
   }
+
+  @Composable
+  override fun ConfigurationField(
+    instance: WidgetInstance,
+    field: WidgetConfigurationField,
+    onFieldChange: (WidgetConfigurationField, String) -> Unit,
+    onValuesChange: (Map<String, String>) -> Unit,
+  ): Boolean {
+    if (field.type != WidgetConfigurationFieldType.Location) return false
+    WeatherLocationConfigurationField(
+      widget = instance,
+      field = field,
+      onValuesChange = onValuesChange,
+    )
+    return true
+  }
 }
 
 @Composable

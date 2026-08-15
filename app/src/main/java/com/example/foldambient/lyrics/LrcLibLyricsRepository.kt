@@ -1,5 +1,6 @@
 package com.example.foldambient.lyrics
 
+import com.example.foldambient.cache.BoundedLruCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -11,7 +12,8 @@ import java.net.URLEncoder
 import kotlin.math.abs
 
 class LrcLibLyricsRepository : AmbientLyricsRepository {
-  private val successfulMatches = mutableMapOf<String, AmbientLyricsLookupResult.Found>()
+  private val successfulMatches =
+    BoundedLruCache<String, AmbientLyricsLookupResult.Found>(SuccessfulLyricsCacheCapacity)
 
   override suspend fun lyricsFor(query: LyricsTrackQuery): AmbientLyricsLookupResult =
     withContext(Dispatchers.IO) {
@@ -189,3 +191,4 @@ private class TrackNotFoundException : IOException("Track not found")
 private const val BaseUrl = "https://lrclib.net"
 private const val LrcLibUserAgent = "FoldAmbient/1.0 (https://example.com/foldambient)"
 private const val HttpTooManyRequests = 429
+private const val SuccessfulLyricsCacheCapacity = 32
