@@ -61,6 +61,7 @@ fun defaultAmbientWidgetRegistry() =
         AndroidAppWidgetWidget(),
         MediaWidget(),
         LyricsWidget(),
+        WeatherWidget(),
       ),
     templates =
       listOf(
@@ -93,6 +94,20 @@ fun defaultAmbientWidgetRegistry() =
           displayName = "Battery",
           widgetType = "battery.status",
           values = mapOf("label" to "Battery"),
+        ),
+        widgetTemplate(
+          id = "weather.current",
+          displayName = "Weather",
+          widgetType = "weather.current",
+          values =
+            mapOf(
+              "label" to "Weather",
+              "locationMode" to "manual",
+              "locationName" to "New York",
+              "latitude" to "40.7128",
+              "longitude" to "-74.0060",
+              "temperatureUnit" to "fahrenheit",
+            ),
         ),
         widgetTemplate(
           id = "text.simple",

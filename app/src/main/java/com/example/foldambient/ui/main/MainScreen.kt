@@ -1,5 +1,11 @@
 package com.example.foldambient.ui.main
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.location.Location
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -40,6 +46,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -66,8 +73,14 @@ import com.example.foldambient.ambient.WidgetInstance
 import com.example.foldambient.ambient.ui.AmbientPageRenderer
 import com.example.foldambient.ambient.widgets.defaultAmbientWidgetRegistry
 import com.example.foldambient.theme.FoldAmbientTheme
+import com.example.foldambient.weather.OpenMeteoGeocodingRepository
+import com.example.foldambient.weather.PhoneWeatherLocationProvider
+import com.example.foldambient.weather.PhoneWeatherLocationResult
+import com.example.foldambient.weather.WeatherLocationMode
+import com.example.foldambient.weather.WeatherLocationSearchResult
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import java.util.UUID
@@ -498,6 +511,14 @@ private fun AmbientDashboard(
                   ),
                 )
               },
+              onValuesChange = { values ->
+                onPageDeckChange(
+                  pageDeck.updateSelectedWidgetConfiguration(
+                    slotIndex = selectedSlotIndex,
+                    values = values,
+                  ),
+                )
+              },
             )
           }
         }
@@ -670,6 +691,7 @@ private fun WidgetConfigurationPanel(
   widgetName: String,
   fields: List<WidgetConfigurationField>,
   onFieldChange: (WidgetConfigurationField, String) -> Unit,
+  onValuesChange: (Map<String, String>) -> Unit,
 ) {
   Column(
     modifier = Modifier
@@ -700,6 +722,12 @@ private fun WidgetConfigurationPanel(
             selectedValue = widget.configuration.text(field.key, field.defaultValue),
             onFieldChange = onFieldChange,
           )
+        WidgetConfigurationFieldType.Location ->
+          LocationField(
+            widget = widget,
+            field = field,
+            onValuesChange = onValuesChange,
+          )
         WidgetConfigurationFieldType.Boolean ->
           Row(
             modifier = Modifier.fillMaxWidth(),
@@ -717,6 +745,176 @@ private fun WidgetConfigurationPanel(
             )
           }
       }
+    }
+  }
+}
+
+@Composable
+private fun LocationField(
+  widget: WidgetInstance,
+  field: WidgetConfigurationField,
+  onValuesChange: (Map<String, String>) -> Unit,
+) {
+  val context = androidx.compose.ui.platform.LocalContext.current
+  val coroutineScope = rememberCoroutineScope()
+  val phoneLocationProvider =
+    remember(context) { PhoneWeatherLocationProvider(context.applicationContext) }
+  val geocodingRepository = remember { OpenMeteoGeocodingRepository() }
+  val locationMode =
+    WeatherLocationMode.fromValue(
+      widget.configuration.text("locationMode", WeatherLocationMode.Manual.value),
+    )
+  var query by remember(widget.id) {
+    mutableStateOf(widget.configuration.text("locationName", field.defaultValue))
+  }
+  var searchResults by remember { mutableStateOf(emptyList<WeatherLocationSearchResult>()) }
+  var searchStatus by remember { mutableStateOf<String?>(null) }
+  var phoneStatus by remember { mutableStateOf<String?>(null) }
+
+  fun savePhoneLocation(location: Location) {
+    onValuesChange(
+      mapOf(
+        "locationMode" to WeatherLocationMode.Phone.value,
+        "locationName" to "Current location",
+        "latitude" to location.latitude.toString(),
+        "longitude" to location.longitude.toString(),
+      ),
+    )
+  }
+
+  fun resolvePhoneLocation() {
+    coroutineScope.launch {
+      phoneStatus = "Locating"
+      when (val result = phoneLocationProvider.currentLocation()) {
+        is PhoneWeatherLocationResult.Available -> {
+          savePhoneLocation(result.location)
+          phoneStatus = null
+        }
+        PhoneWeatherLocationResult.MissingPermission -> {
+          phoneStatus = "Location permission needed"
+        }
+        is PhoneWeatherLocationResult.Unavailable -> {
+          phoneStatus = result.reason
+        }
+      }
+    }
+  }
+
+  val locationPermissionLauncher =
+    rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+      if (granted) {
+        resolvePhoneLocation()
+      } else {
+        phoneStatus = "Location denied"
+        onValuesChange(mapOf("locationMode" to WeatherLocationMode.Manual.value))
+      }
+    }
+
+  LaunchedEffect(query, locationMode) {
+    if (locationMode != WeatherLocationMode.Manual) return@LaunchedEffect
+    val trimmedQuery = query.trim()
+    if (trimmedQuery.length < 2) {
+      searchResults = emptyList()
+      searchStatus = null
+      return@LaunchedEffect
+    }
+
+    searchStatus = "Searching"
+    delay(LocationSearchDebounceMillis)
+    searchResults = geocodingRepository.searchLocations(trimmedQuery)
+    searchStatus = if (searchResults.isEmpty()) "No matches" else null
+  }
+
+  Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Text(
+      text = field.label,
+      color = Color.White,
+      style = MaterialTheme.typography.bodyLarge,
+    )
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Text(
+        text = "Use phone location",
+        color = if (locationMode == WeatherLocationMode.Phone) Color.White else Muted,
+        style = MaterialTheme.typography.bodyMedium,
+      )
+      Switch(
+        checked = locationMode == WeatherLocationMode.Phone,
+        onCheckedChange = { usePhoneLocation ->
+          if (usePhoneLocation) {
+            onValuesChange(
+              mapOf(
+                "locationMode" to WeatherLocationMode.Phone.value,
+                "locationName" to "Current location",
+              ),
+            )
+            if (context.hasCoarseLocationPermission()) {
+              resolvePhoneLocation()
+            } else {
+              locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+            }
+          } else {
+            phoneStatus = null
+            onValuesChange(mapOf("locationMode" to WeatherLocationMode.Manual.value))
+          }
+        },
+      )
+    }
+
+    phoneStatus?.let { status ->
+      Text(
+        text = status,
+        color = Muted,
+        style = MaterialTheme.typography.labelLarge,
+      )
+    }
+
+    if (locationMode == WeatherLocationMode.Manual) {
+      TextField(
+        value = query,
+        onValueChange = { value -> query = value },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        label = { Text("Search city") },
+      )
+      searchStatus?.let { status ->
+        Text(
+          text = status,
+          color = Muted,
+          style = MaterialTheme.typography.labelLarge,
+        )
+      }
+      searchResults.forEach { result ->
+        TextButton(
+          onClick = {
+            query = result.displayName
+            searchResults = emptyList()
+            searchStatus = null
+            onValuesChange(
+              mapOf(
+                "locationMode" to WeatherLocationMode.Manual.value,
+                "locationName" to result.displayName,
+                "latitude" to result.latitude.toString(),
+                "longitude" to result.longitude.toString(),
+              ),
+            )
+          },
+        ) {
+          Text(
+            text = result.displayName,
+            color = Color.White,
+          )
+        }
+      }
+    } else {
+      Text(
+        text = widget.configuration.text("locationName", "Current location"),
+        color = Muted,
+        style = MaterialTheme.typography.labelLarge,
+      )
     }
   }
 }
@@ -772,6 +970,15 @@ private fun AmbientPageDeck.updateSelectedWidgetConfiguration(
   field: WidgetConfigurationField,
   value: String,
 ): AmbientPageDeck =
+  updateSelectedWidgetConfiguration(
+    slotIndex = slotIndex,
+    values = mapOf(field.key to value),
+  )
+
+private fun AmbientPageDeck.updateSelectedWidgetConfiguration(
+  slotIndex: Int,
+  values: Map<String, String>,
+): AmbientPageDeck =
   updateSelectedPage { page ->
     page.copy(
       widgets =
@@ -783,7 +990,7 @@ private fun AmbientPageDeck.updateSelectedWidgetConfiguration(
               widget.copy(
                 configuration =
                   WidgetConfiguration(
-                    values = widget.configuration.values + (field.key to value),
+                    values = widget.configuration.values + values,
                   ),
               ),
             )
@@ -953,6 +1160,9 @@ private fun activationStatusText(
 private fun Float.roundToTenth(): String =
   ((this * 10f).roundToInt() / 10f).toString()
 
+private fun Context.hasCoarseLocationPermission(): Boolean =
+  checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
 private enum class AmbientWindowClass {
   Standard,
   WideCoverLandscape,
@@ -1009,6 +1219,7 @@ private val Night = Color(0xFF05070A)
 private val Muted = Color(0xFF9CA3AF)
 private const val CyclicPagerPageCount = 10_000
 private const val PageIndicatorHideDelayMillis = 1_200L
+private const val LocationSearchDebounceMillis = 350L
 private const val PixelShiftActiveIntervalMillis = 45_000L
 private const val PixelShiftIdleIntervalMillis = 25_000L
 private data class PixelShiftStep(val x: Dp, val y: Dp)

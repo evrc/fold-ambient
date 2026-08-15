@@ -55,6 +55,7 @@ data class WidgetConfigurationOption(
 
 enum class WidgetConfigurationFieldType {
   Boolean,
+  Location,
   Option,
   Text,
 }
