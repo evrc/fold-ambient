@@ -13,6 +13,8 @@ import com.example.foldambient.ambient.WidgetConfigurationField
 import com.example.foldambient.ambient.WidgetConfigurationFieldType
 import com.example.foldambient.ambient.WidgetConfigurationSpec
 import com.example.foldambient.ambient.WidgetInstance
+import com.example.foldambient.media.AmbientMediaRepository
+import com.example.foldambient.media.StaticAmbientMediaRepository
 
 class DummyTextWidget : AmbientWidget {
   override val type = "dummy.text"
@@ -70,7 +72,9 @@ private fun DummyTextContent(
   }
 }
 
-fun defaultAmbientWidgetRegistry() =
+fun defaultAmbientWidgetRegistry(
+  mediaRepository: AmbientMediaRepository = StaticAmbientMediaRepository(),
+) =
   AmbientWidgetRegistry(
     widgets =
       listOf(
@@ -81,8 +85,8 @@ fun defaultAmbientWidgetRegistry() =
         DummyTextWidget(),
         EmptyWidget(),
         AndroidAppWidgetWidget(),
-        MediaWidget(),
-        LyricsWidget(),
+        MediaWidget(mediaRepository),
+        LyricsWidget(mediaRepository),
         WeatherWidget(),
       ),
     templates =

@@ -44,29 +44,25 @@ import com.example.foldambient.media.AmbientMediaAction
 import com.example.foldambient.media.AmbientMediaRepository
 import com.example.foldambient.media.AmbientMediaSnapshot
 import com.example.foldambient.media.AmbientPlaybackStatus
-import com.example.foldambient.media.PlatformMediaRepository
-import kotlinx.coroutines.delay
+import com.example.foldambient.media.StaticAmbientMediaRepository
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlin.math.roundToLong
 
-class MediaWidget : AmbientWidget {
+class MediaWidget(
+  private val repository: AmbientMediaRepository,
+) : AmbientWidget {
   override val type = "media.playback"
   override val displayName = "Media"
 
   @Composable
   override fun Content(instance: WidgetInstance, modifier: Modifier) {
     val context = LocalContext.current
-    val repository =
-      remember(context) {
-        PlatformMediaRepository(context.applicationContext)
-      }
-    var snapshot by remember(repository) { mutableStateOf(repository.snapshot()) }
-
-    StartedWidgetEffect(repository) {
-      while (true) {
-        snapshot = repository.snapshot()
-        delay(if (snapshot.playbackStatus == AmbientPlaybackStatus.Playing) 1_000L else 2_500L)
-      }
-    }
+    val sourceSnapshot by repository.state.collectAsStateWithLifecycle()
+    val snapshot =
+      rememberEstimatedMediaSnapshot(
+        snapshot = sourceSnapshot,
+        refreshMillis = MediaPositionRefreshMillis,
+      )
 
     MediaWidgetContent(
       snapshot = snapshot,
@@ -114,13 +110,7 @@ private val PreviewMediaSnapshot =
       ),
   )
 
-private object PreviewMediaRepository : AmbientMediaRepository {
-  override fun snapshot(): AmbientMediaSnapshot = PreviewMediaSnapshot
-  override fun playPause() = Unit
-  override fun previous() = Unit
-  override fun next() = Unit
-  override fun seekTo(positionMillis: Long) = Unit
-}
+private val PreviewMediaRepository = StaticAmbientMediaRepository(PreviewMediaSnapshot)
 
 @Composable
 private fun MediaWidgetContent(
@@ -475,3 +465,5 @@ private fun Long.formatDuration(): String {
   val seconds = totalSeconds % 60L
   return "$minutes:${seconds.toString().padStart(2, '0')}"
 }
+
+private const val MediaPositionRefreshMillis = 1_000L

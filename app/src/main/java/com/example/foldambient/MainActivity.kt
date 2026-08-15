@@ -28,6 +28,7 @@ import com.example.foldambient.ambient.widgets.defaultAmbientWidgetRegistry
 import com.example.foldambient.display.AmbientDisplaySettings
 import com.example.foldambient.display.AmbientDisplayPolicy
 import com.example.foldambient.display.SharedPreferencesAmbientDisplaySettingsRepository
+import com.example.foldambient.media.PlatformMediaRepository
 import com.example.foldambient.theme.FoldAmbientTheme
 import com.example.foldambient.ui.main.MainScreen
 import kotlinx.coroutines.delay
@@ -38,6 +39,7 @@ class MainActivity : ComponentActivity() {
   private val activationSignalsState = mutableStateOf(AmbientActivationSignals())
   private val userInteractionTickState = mutableStateOf(0L)
   private lateinit var activationMonitor: AmbientActivationMonitor
+  private lateinit var mediaRepository: PlatformMediaRepository
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -45,6 +47,7 @@ class MainActivity : ComponentActivity() {
       AmbientActivationMonitor(applicationContext) { signals ->
         activationSignalsState.value = signals
       }
+    mediaRepository = PlatformMediaRepository(applicationContext)
 
     enableEdgeToEdge()
     setContent {
@@ -74,7 +77,7 @@ class MainActivity : ComponentActivity() {
           settings = activationSettings,
           signals = activationSignals,
         )
-      val widgetRegistry = remember { defaultAmbientWidgetRegistry() }
+      val widgetRegistry = remember { defaultAmbientWidgetRegistry(mediaRepository) }
 
       LaunchedEffect(isAmbientActive, userInteractionTick, displaySettings.idleDelayMillis) {
         isAmbientIdle = false
@@ -173,11 +176,13 @@ class MainActivity : ComponentActivity() {
   override fun onStart() {
     super.onStart()
     activationMonitor.start()
+    mediaRepository.start()
     applyAmbientWindowMode(requestedAmbientWindowMode)
   }
 
   override fun onStop() {
     applyAmbientWindowMode(false)
+    mediaRepository.stop()
     activationMonitor.stop()
     super.onStop()
   }

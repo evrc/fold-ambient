@@ -38,33 +38,29 @@ import com.example.foldambient.lyrics.AmbientLyricsLookupResult
 import com.example.foldambient.lyrics.AmbientLyricsSource
 import com.example.foldambient.lyrics.LrcLibLyricsRepository
 import com.example.foldambient.lyrics.LyricsTrackQuery
+import com.example.foldambient.media.AmbientMediaRepository
 import com.example.foldambient.media.AmbientMediaSnapshot
 import com.example.foldambient.media.AmbientPlaybackStatus
-import com.example.foldambient.media.PlatformMediaRepository
-import kotlinx.coroutines.delay
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
-class LyricsWidget : AmbientWidget {
+class LyricsWidget(
+  private val mediaRepository: AmbientMediaRepository,
+) : AmbientWidget {
   override val type = "lyrics.current"
   override val displayName = "Lyrics"
 
   @Composable
   override fun Content(instance: WidgetInstance, modifier: Modifier) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val mediaRepository =
-      remember(context) {
-        PlatformMediaRepository(context.applicationContext)
-      }
     val lyricsRepository = remember { LrcLibLyricsRepository() }
-    var snapshot by remember(mediaRepository) { mutableStateOf(mediaRepository.snapshot()) }
+    val sourceSnapshot by mediaRepository.state.collectAsStateWithLifecycle()
+    val snapshot =
+      rememberEstimatedMediaSnapshot(
+        snapshot = sourceSnapshot,
+        refreshMillis = LyricsPositionRefreshMillis,
+      )
     var lookupResult by remember { mutableStateOf<AmbientLyricsLookupResult?>(null) }
-    val query = LyricsTrackQuery.from(snapshot)
-
-    StartedWidgetEffect(mediaRepository) {
-      while (true) {
-        snapshot = mediaRepository.snapshot()
-        delay(if (snapshot.playbackStatus == AmbientPlaybackStatus.Playing) 500L else 1_500L)
-      }
-    }
+    val query = LyricsTrackQuery.from(sourceSnapshot)
 
     StartedWidgetEffect(query?.cacheKey, lyricsRepository) {
       lookupResult = null
@@ -301,3 +297,4 @@ private fun Modifier.seekToLyricLine(
 }
 
 private const val SyncedLyricLeadRows = 2
+private const val LyricsPositionRefreshMillis = 500L
